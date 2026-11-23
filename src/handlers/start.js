@@ -69,19 +69,20 @@ export async function handleStart(ctx) {
 
 Main hoon <b>EarnifyXSeedanceBot</b>, powered by <b>Seedance 2.5</b> & <b>Higgsfield MCP</b>! 🚀
 
-⚠️ <b>IMPORTANT RULES & DISCLAIMER (Zaroori Niyam):</b>
+🎉 <b>100% FREE AI VIDEO STUDIO FOR EVERYONE!</b>
+Ab bina kisi payment ya credit recharge ke, aap directly ultra-realistic AI videos bana sakte hain!
+
+⚠️ <b>FAIR USE RULES & GUIDELINES:</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-1️⃣ <b>No Guarantee:</b> <i>Video kitna banega, kaisa banega ya kitna chalega iski koi guarantee nahi hogi.</i>
-2️⃣ <b>Risk Disclaimer:</b> <i>Soch-samajh ke hi aapko apna paisa dalna hai. Kisi bhi tarah ke issue ke liye <b>Admin ki koi jimmedari nahi hogi</b>.</i>
-3️⃣ <b>No Refund:</b> <i>Services digital hain, isliye kisi bhi condition me refund nahi hoga.</i>
-4️⃣ <b>Free Trial:</b> <i>Aapko <b>1 Video 100% Free</b> trial milta hai taaki aap quality check kar sakein!</i>
-5️⃣ <b>Refer & Earn:</b> <i>5 dosto ko refer karein aur paayein <b>Lifetime VIP Unlimited Access</b> bilkul Free!</i>
+1️⃣ <b>100% Free:</b> <i>Yeh bot poori community ke liye bilkul FREE hai!</i>
+2️⃣ <b>Anti-Spam & Fair Queue:</b> <i>Ek time par ek hi video generate karein taaki sabhi users ka number barabar aaye.</i>
+3️⃣ <b>Video Specs:</b> <i>Default vertical <b>9:16</b> (Reels/Shorts) aur 4s se lekar <b>30 seconds</b> tak generate ho sakta hai!</i>
+4️⃣ <b>Invite & Share:</b> <i>Apne dosto ke sath invite link share karein aur VIP status paayein!</i>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚡ <b>Quick Commands:</b>
 🎬 <code>/video &lt;prompt&gt;</code> — Seedance 2.5 AI Video (Ya seedhe prompt bhejein)
-🎁 <code>/refer</code> — Invite Friends & Get Free VIP
-💳 <code>/buy</code> — Buy VIP Plan ($0.50 Unlimited)
+🎁 <code>/refer</code> — Invite Friends & Grow Community
 🔴 <code>/proof</code> — Live Community Activity & Delivery Proof
 📊 <code>/status</code> — Balance, Referrals & GPU queue status
 
@@ -90,13 +91,13 @@ Niche diye gaye button par click karke shuru karein! 👇
 
   const keyboard = new InlineKeyboard()
     .text('🎬 Generate Video', 'btn_video_help')
-    .text('🎁 Refer & Earn VIP', 'btn_refer')
+    .text('🎁 Invite Friends', 'btn_refer')
     .row()
-    .text('💎 Buy VIP Plan ($0.50)', 'btn_back_plans')
     .text('🔴 Live Proof', 'btn_live_proof')
-    .row()
     .text('📊 Check Status', 'btn_status')
-    .text('ℹ️ Prompt Guide', 'btn_help');
+    .row()
+    .text('ℹ️ Prompt Guide', 'btn_help')
+    .url('💬 Community', 'https://t.me/EarnifyXCommunity');
 
   await ctx.reply(welcomeMessage, {
     parse_mode: 'HTML',
@@ -119,17 +120,17 @@ export async function handleReferCommand(ctx) {
   );
 
   const statusBadge = stats.isVip
-    ? '💎 <b>LIFETIME VIP UNLIMITED ACTIVE!</b> 🎉'
-    : `🎯 <b>${stats.referralCount} / 5 Referrals Completed</b> (${stats.remainingForVip} remaining for VIP)`;
+    ? '💎 <b>VIP CREATOR STATUS ACTIVE!</b> 🎉'
+    : `🎯 <b>${stats.referralCount} / 5 Friends Invited</b> (${stats.remainingForVip} remaining for VIP Badge)`;
 
   const msg = `
-🎁 <b>EarnifyX Refer & Earn Program</b>
+🎁 <b>EarnifyX Community Refer & Share Program</b>
 ━━━━━━━━━━━━━━━━━━━━━━
-<i>"Jitna chahe utna video banao! Koi limit ya credit ka jhanjhat nahi!"</i> 🚀
+<i>"100% Free AI Video Studio for everyone! Apne dosto ke sath share karein!"</i> 🚀
 
-🔥 <b>Rewards System:</b>
-• <b>Har 1 Friend:</b> Aapko milega <b>+1 Free AI Video Pass</b>
-• <b>Sirf 5 Friends:</b> Paayein <b>LIFETIME UNLIMITED VIP ACCESS</b> bilkul FREE! 💎
+🔥 <b>Community Benefits:</b>
+• <b>Sabhi ke liye Free:</b> Har creator ko milta hai Unlimited Video Generation!
+• <b>5 Dosto ko Invite Karein:</b> Paayein <b>VIP Creator Badge & Priority GPU Queue</b> 💎
 
 📊 <b>Aapka Referral Progress:</b>
 ${statusBadge}
@@ -137,7 +138,7 @@ ${statusBadge}
 🔗 <b>Aapka Personal Invite Link:</b>
 <code>${refLink}</code>
 
-💡 <i>Apne dosto ke sath yeh link share karein. Jaise hi wo bot join karenge, aapka reward turant add ho jayega!</i>
+💡 <i>Apne dosto ke sath yeh link share karein aur unhe bhi free me AI video banana sikhayein!</i>
   `.trim();
 
   const keyboard = new InlineKeyboard()

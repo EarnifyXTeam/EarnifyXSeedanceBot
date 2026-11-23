@@ -149,36 +149,20 @@ export class UserService {
 
   /**
    * Check if user is eligible to generate a video
-   * Rule: 1 video free trial, then paid (credits or VIP)
+   * Rule: 100% Free for everyone in the community!
    */
   static checkAccess(userId) {
     const id = userId.toString();
     const adminId = (config.adminId || '').toString();
 
-    // 1. Super Admin bypass (unlimited access)
     if (adminId && id === adminId) {
       return { allowed: true, reason: 'admin', remaining: 9999 };
     }
 
-    const user = users[id] || { totalGenerations: 0, credits: 0, isVip: false };
+    const user = users[id] || { totalGenerations: 0, credits: 0, isVip: true };
 
-    // 2. VIP bypass
-    if (user.isVip) {
-      return { allowed: true, reason: 'vip', remaining: 9999 };
-    }
-
-    // 3. Paid Credits
-    if ((user.credits || 0) > 0) {
-      return { allowed: true, reason: 'credits', remaining: user.credits };
-    }
-
-    // 4. Free 1st video trial
-    if ((user.totalGenerations || 0) < 1) {
-      return { allowed: true, reason: 'free_trial', remaining: 1 };
-    }
-
-    // 5. Free trial exhausted and no credits
-    return { allowed: false, reason: 'paywall_required', remaining: 0 };
+    // 100% Free for all community members (No paywall)
+    return { allowed: true, reason: user.isVip ? 'vip' : 'free_unlimited', remaining: 9999 };
   }
 
   /**

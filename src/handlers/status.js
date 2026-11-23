@@ -14,15 +14,11 @@ export async function handleStatusCommand(ctx) {
     const access = UserService.checkAccess(userId);
     const refStats = UserService.getReferralStats(userId);
 
-    let planStatus = '🎁 Free Trial (1 Video)';
+    let planStatus = '🎁 100% Free Lifetime Access (Unlimited Videos 🚀)';
     if (access.reason === 'admin') {
       planStatus = '👑 Super Admin (Unlimited Access)';
     } else if (access.reason === 'vip') {
-      planStatus = '💎 VIP Plan (Unlimited Access)';
-    } else if (access.reason === 'credits') {
-      planStatus = `💳 Paid Plan (${access.remaining} Video Credits Remaining)`;
-    } else {
-      planStatus = '⚠️ Free Trial Exhausted (Plan Required to Generate)';
+      planStatus = '💎 VIP Creator (Priority GPU Access)';
     }
 
     const message = `
@@ -30,7 +26,7 @@ export async function handleStatusCommand(ctx) {
 
 👤 <b>Aapka Plan:</b> ${planStatus}
 🎬 <b>Generations Done:</b> ${UserService.getUser(userId)?.totalGenerations || 0} videos
-👥 <b>Total Referrals:</b> ${refStats.referralCount} ${refStats.isVip ? '(💎 VIP Active)' : `(${refStats.remainingForVip} more for Free VIP)`}
+👥 <b>Total Friends Invited:</b> ${refStats.referralCount} ${refStats.isVip ? '(💎 VIP Active)' : `(${refStats.remainingForVip} more for VIP Badge)`}
 
 ⚙️ <b>Server & GPU Status:</b>
 • <b>Bot Engine:</b> Online & Ready 🟢
@@ -41,14 +37,14 @@ export async function handleStatusCommand(ctx) {
 • <b>Higgsfield Ultra Engine:</b>
 ${text || 'Plan: Ultra 3K (Active Unlimited Generations)'}
 
-⚠️ <b>RULES:</b> <i>Video kitna banega iski koi guarantee nahi hogi. Soch samajh kar funds dalein, admin ki koi jimmedari nahi hogi.</i>
+✨ <i>100% Free Community Edition by EarnifyX</i>
     `.trim();
 
     const keyboard = new InlineKeyboard()
       .text('🔄 Refresh Status', 'btn_refresh_status')
-      .text('🎁 Refer & Earn VIP', 'btn_refer')
+      .text('🎁 Invite Friends', 'btn_refer')
       .row()
-      .text('💎 Buy VIP ($0.50)', 'btn_back_plans')
+      .text('🎬 Generate Video', 'btn_video_help')
       .text('🔙 Main Menu', 'btn_main_menu');
 
     if (ctx.callbackQuery) {
