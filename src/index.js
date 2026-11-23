@@ -7,7 +7,7 @@ import { handleAudioCommand } from './handlers/audio.js';
 import { handleStatusCommand } from './handlers/status.js';
 import { handleHelpCommand } from './handlers/help.js';
 import { handleMyVideos, handleRecentAudit } from './handlers/history.js';
-import { sendPaymentInvoice, handleBuyPlan, handleVerifyPayment } from './handlers/payment.js';
+import { sendPaymentInvoice, handleBuyPlan, handleVerifyPayment, handleManualPaySubmit, handleAdminApproval } from './handlers/payment.js';
 import { BinancePayService } from './services/binancePayService.js';
 import { UserService } from './services/userService.js';
 import { forceJoinMiddleware } from './middlewares/forceJoin.js';
@@ -47,6 +47,7 @@ bot.command('myvideos', handleMyVideos);
 bot.command('recent', handleRecentAudit);
 bot.command('buy', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
 bot.command('plans', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
+bot.command('pay', handleManualPaySubmit);
 
 // Admin commands to manage credits manually if needed
 bot.command('addcredits', async (ctx) => {
@@ -91,6 +92,8 @@ bot.callbackQuery(/^verify_order_/, async (ctx) => {
   const tradeNo = ctx.callbackQuery.data.replace('verify_order_', '');
   return handleVerifyPayment(ctx, tradeNo);
 });
+
+bot.callbackQuery(/^adm_/, handleAdminApproval);
 bot.callbackQuery('btn_video_help', async (ctx) => {
   try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleVideoCommand(ctx);

@@ -24,9 +24,9 @@ export const config = {
   // Admin and Binance Pay Configuration
   adminId: process.env.ADMIN_ID || '7150803046',
   binancePayApiKey: process.env.BINANCE_PAY_API_KEY || '',
-  binancePaySecretKey: process.env.BINANCE_PAY_SECRET_KEY || '',
-  binancePayId: process.env.BINANCE_PAY_ID || '',
-  usdtWalletAddress: process.env.USDT_WALLET_ADDRESS || '',
+  binancePaySecretKey: process.env.BINANCE_PAY_SECRET_KEY || process.env.BINANCE_PAY_API_SECRET || '',
+  binancePayId: process.env.BINANCE_PAY_ID || '487419968',
+  usdtWalletAddress: process.env.USDT_WALLET_ADDRESS || process.env.BINANCE_USDT_ADDRESS || 'TF1VDTPuVpSL93K1GrgQi4M6K5o7DiKB9i',
 
   // Dual Force Channels
   forceChannels: [

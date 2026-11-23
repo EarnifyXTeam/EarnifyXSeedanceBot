@@ -158,7 +158,108 @@ export async function handleVerifyPayment(ctx, merchantTradeNo) {
   return ctx.reply(
     `⏳ <b>Payment Status: Pending / Not Yet Detected</b>\n\n` +
     `Agar aapne Binance par transfer complete kar diya hai, toh kripya 10-20 seconds wait karke <b>"Check Again"</b> dabayein.\n\n` +
+    `💡 <i>Agar aapne direct Binance Pay ID ya USDT address par transfer kiya hai, toh apna TxID/Order ID submit karein:</i>\n` +
+    `👉 <code>/pay &lt;Transaction_ID&gt;</code>\n\n` +
     `<i>Note: Transaction confirm hone me Binance par kuch pal ka samay lag sakta hai.</i>`,
     { parse_mode: 'HTML', reply_markup: retryKeyboard }
   );
+}
+
+/**
+ * Handle manual TxID / Order ID submission by user (/pay <txid>)
+ */
+export async function handleManualPaySubmit(ctx) {
+  const userId = ctx.from?.id?.toString();
+  const username = ctx.from?.username ? `@${ctx.from.username}` : (ctx.from?.first_name || 'User');
+  const text = ctx.message?.text || '';
+  const txId = text.replace(/^\/pay(@\w+)?\s*/i, '').trim();
+
+  if (!txId) {
+    return ctx.reply(
+      `ℹ️ <b>Usage:</b> <code>/pay &lt;Binance_Order_ID_ya_TxID&gt;</code>\n\n` +
+      `Binance Pay ID <code>${config.binancePayId || '487419968'}</code> par payment karne ke baad apna Order ID ya TxID yahan bhejein.`,
+      { parse_mode: 'HTML' }
+    );
+  }
+
+  await ctx.reply(
+    `✅ <b>Payment Request Submitted!</b>\n\n` +
+    `🆔 <b>TxID / Order ID:</b> <code>${txId}</code>\n\n` +
+    `Verification ke baad aapka account activate ho jayega. Kripya thoda intezaar karein!`,
+    { parse_mode: 'HTML' }
+  );
+
+  // Send 1-click Approval prompt to Admin
+  if (config.adminId) {
+    const adminKeyboard = new InlineKeyboard()
+      .text('✅ Approve $0.50 (5 Videos)', `adm_appr_5_${userId}`)
+      .row()
+      .text('💎 Approve $1.00 (Unlimited)', `adm_appr_vip_${userId}`)
+      .row()
+      .text('❌ Reject', `adm_reject_${userId}`);
+
+    try {
+      await ctx.api.sendMessage(
+        config.adminId,
+        `🔔 <b>New Payment Verification Request:</b>\n\n` +
+        `👤 <b>User:</b> ${username} (<code>${userId}</code>)\n` +
+        `🆔 <b>TxID:</b> <code>${txId}</code>\n` +
+        `⏰ <b>Time:</b> ${new Date().toLocaleString('en-IN')}\n\n` +
+        `Niche diye gaye button par click karke turant approve ya reject karein:`,
+        { parse_mode: 'HTML', reply_markup: adminKeyboard }
+      );
+    } catch (e) {
+      console.error('Failed to notify admin of manual pay submit:', e.message);
+    }
+  }
+}
+
+/**
+ * Handle Admin 1-Click Approval / Rejection
+ */
+export async function handleAdminApproval(ctx) {
+  const adminId = ctx.from?.id?.toString();
+  if (adminId !== (config.adminId || '').toString()) {
+    try { await ctx.answerCallbackQuery('Unauthorized action'); } catch (e) {}
+    return;
+  }
+
+  const data = ctx.callbackQuery.data;
+
+  if (data.startsWith('adm_appr_5_')) {
+    const targetUserId = data.replace('adm_appr_5_', '');
+    UserService.addCredits(targetUserId, 5);
+    try { await ctx.answerCallbackQuery('Approved 5 Credits!'); } catch (e) {}
+    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n✅ <b>APPROVED: Added 5 Video Credits ($0.50)!</b>`, { parse_mode: 'HTML' });
+    try {
+      await ctx.api.sendMessage(
+        targetUserId,
+        `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>5 Video Credits ($0.50)</b> add ho chuke hain. Ab aap seedhe prompt bhej kar video generate kar sakte hain! 🚀`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (e) {}
+  } else if (data.startsWith('adm_appr_vip_')) {
+    const targetUserId = data.replace('adm_appr_vip_', '');
+    UserService.setVip(targetUserId, true);
+    try { await ctx.answerCallbackQuery('Approved VIP Unlimited!'); } catch (e) {}
+    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n💎 <b>APPROVED: Activated Unlimited VIP Access ($1.00)!</b>`, { parse_mode: 'HTML' });
+    try {
+      await ctx.api.sendMessage(
+        targetUserId,
+        `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>Unlimited VIP Access ($1.00)</b> activate ho chuka hai! Enjoy unlimited video generations. 🚀`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (e) {}
+  } else if (data.startsWith('adm_reject_')) {
+    const targetUserId = data.replace('adm_reject_', '');
+    try { await ctx.answerCallbackQuery('Payment Rejected'); } catch (e) {}
+    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n❌ <b>REJECTED: Payment was not approved.</b>`, { parse_mode: 'HTML' });
+    try {
+      await ctx.api.sendMessage(
+        targetUserId,
+        `❌ <b>Payment Not Approved:</b>\n\nAapka diya gaya Transaction ID verify nahi ho saka. Kripya sahi Binance Order ID ke sath dobara try karein ya support se sampark karein.`,
+        { parse_mode: 'HTML' }
+      );
+    } catch (e) {}
+  }
 }
