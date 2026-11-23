@@ -68,13 +68,13 @@ export class HiggsfieldService {
    */
   static async getVideoUrlFromGenerations(jobId) {
     try {
-      const res = await mcpClient.callTool('show_generations', {}, 15000);
+      const res = await mcpClient.callTool('show_generations', {}, 30000);
       const text = this.getResponseText(res);
       const lines = text.split('\n');
 
       for (const line of lines) {
         if (line.includes(jobId)) {
-          console.log(`[show_generations check]: ${line.trim()}`);
+          console.log(`[show_generations snapshot]: ${line.trim()}`);
           if (line.includes('completed')) {
             const urlMatch = line.match(/https?:\/\/[^\s"',]+\.(mp4|webm|jpg|png|webp)/i);
             if (urlMatch) {
@@ -88,7 +88,6 @@ export class HiggsfieldService {
       }
     } catch (e) {
       if (e.message?.includes('status: failed')) throw e;
-      // non-fatal
     }
     return null;
   }
@@ -96,56 +95,26 @@ export class HiggsfieldService {
   /**
    * Fast snapshot polling until job completes and returns video URL
    */
-  static async waitForJob(jobId, maxWaitSeconds = 420) {
+  static async waitForJob(jobId, maxWaitSeconds = 480) {
     const startTime = Date.now();
-    console.log(`⏳ Starting fast-snapshot polling for Job ID: ${jobId} (Budget: ${maxWaitSeconds}s)`);
+    console.log(`⏳ Monitoring Job ID: ${jobId} (Timeout budget: ${maxWaitSeconds}s)...`);
 
     while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
       try {
-        // Fast Check 1: show_generations (instant CDN URL)
+        // Fast Check: show_generations (direct CloudFront CDN URL)
         const directUrl = await this.getVideoUrlFromGenerations(jobId);
         if (directUrl) {
           console.log(`🎉 Job ${jobId} COMPLETED! CDN URL: ${directUrl}`);
           return directUrl;
         }
 
-        // Fast Check 2: jobs_wait with timeout_seconds: 0 (immediate snapshot without blocking!)
-        try {
-          const response = await mcpClient.callTool(
-            'jobs_wait',
-            {
-              jobs: [{ index: 0, job_id: jobId }],
-              timeout_seconds: 0, // Instant snapshot, never hangs
-            },
-            15000
-          );
-
-          const urls = this.extractUrls(response);
-          const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
-          if (videoUrl) {
-            console.log(`🎉 Job ${jobId} completed via jobs_wait! Video URL: ${videoUrl}`);
-            return videoUrl;
-          }
-
-          const text = this.getResponseText(response);
-          if (
-            text.includes(',failed,') ||
-            text.includes('status: failed') ||
-            (text.includes('failed:') && !text.includes('failed: 0'))
-          ) {
-            throw new Error('Video rendering failed on Higgsfield server.');
-          }
-        } catch (waitErr) {
-          // ignore snapshot timeout, show_generations is the primary source
-        }
-
-        // Wait 6 seconds before next snapshot
-        await new Promise((resolve) => setTimeout(resolve, 6000));
+        // Wait 8 seconds before next check to give Higgsfield GPU time
+        await new Promise((resolve) => setTimeout(resolve, 8000));
       } catch (err) {
         if (err.message?.includes('failed on Higgsfield') || err.message?.includes('status: failed')) {
           throw err;
         }
-        await new Promise((resolve) => setTimeout(resolve, 6000));
+        await new Promise((resolve) => setTimeout(resolve, 8000));
       }
     }
 
@@ -211,7 +180,7 @@ export class HiggsfieldService {
       if (match) {
         const jobId = match[0];
         console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
-        const timeoutSeconds = duration > 10 ? 420 : 240;
+        const timeoutSeconds = duration > 10 ? 480 : 240;
         const polledVideoUrl = await this.waitForJob(jobId, timeoutSeconds);
         return { videoUrl: polledVideoUrl, jobId, text: responseText, duration };
       }

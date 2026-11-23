@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { config } from './config.js';
 
 class HiggsfieldMCPClient {
@@ -61,19 +62,19 @@ class HiggsfieldMCPClient {
   async callTool(name, args = {}, timeoutMs = 300000) {
     await this.connect();
     try {
-      // 5-minute timeout budget to allow long-running GPU queries
+      // Explicit CallToolResultSchema ensures options.timeout (300s) is correctly recognized by Protocol
       const response = await this.client.callTool(
         {
           name,
           arguments: args,
         },
-        undefined,
+        CallToolResultSchema,
         { timeout: timeoutMs }
       );
       return response;
     } catch (error) {
-      // Only log if not an intentional snapshot poll
-      if (!name.includes('jobs_wait') && !name.includes('show_generations')) {
+      // Suppress logging on background polling snapshots to keep terminal clean
+      if (!name.includes('show_generations') && !name.includes('jobs_wait')) {
         console.error(`❌ Error calling tool ${name}:`, error.message);
       }
       throw error;
