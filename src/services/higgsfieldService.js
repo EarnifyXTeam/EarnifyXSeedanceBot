@@ -118,7 +118,7 @@ export class HiggsfieldService {
   /**
    * Fast snapshot polling with progress updates until job completes and returns video URL
    */
-  static async waitForJob(jobId, maxWaitSeconds = 480, onProgress = null) {
+  static async waitForJob(jobId, maxWaitSeconds = 600, onProgress = null) {
     const startTime = Date.now();
     console.log(`⏳ Monitoring Job ID: ${jobId} (Timeout budget: ${maxWaitSeconds}s)...`);
 

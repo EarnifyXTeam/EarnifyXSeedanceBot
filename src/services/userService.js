@@ -152,6 +152,10 @@ export class UserService {
     }
   }
 
+  static recordGeneration(userId) {
+    this.consumeAccess(userId);
+  }
+
   static addCredits(userId, amount) {
     const id = userId.toString();
     if (users[id]) {
