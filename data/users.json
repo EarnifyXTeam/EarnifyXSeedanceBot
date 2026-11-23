@@ -45,7 +45,7 @@
     "firstName": "Jatinnn",
     "lastName": "",
     "joinedAt": "2026-11-23T06:52:14.006Z",
-    "lastActive": "2026-11-23T07:24:05.713Z",
+    "lastActive": "2026-11-23T07:52:54.059Z",
     "totalGenerations": 2,
     "isBanned": false
   },
@@ -55,8 +55,8 @@
     "firstName": "Vittu",
     "lastName": "Jaiswal",
     "joinedAt": "2026-11-23T06:52:36.741Z",
-    "lastActive": "2026-11-23T07:07:54.346Z",
-    "totalGenerations": 1,
+    "lastActive": "2026-11-23T07:52:43.154Z",
+    "totalGenerations": 2,
     "isBanned": false
   },
   "8108652020": {
@@ -75,7 +75,7 @@
     "firstName": "Vijay",
     "lastName": "",
     "joinedAt": "2026-11-23T07:07:57.937Z",
-    "lastActive": "2026-11-23T07:42:19.122Z",
+    "lastActive": "2026-11-23T07:45:42.048Z",
     "totalGenerations": 1,
     "isBanned": false
   },
@@ -95,8 +95,8 @@
     "firstName": "Malik Naveed",
     "lastName": "Kalyar",
     "joinedAt": "2026-11-23T07:41:53.210Z",
-    "lastActive": "2026-11-23T07:42:26.392Z",
-    "totalGenerations": 0,
+    "lastActive": "2026-11-23T07:45:43.326Z",
+    "totalGenerations": 1,
     "isBanned": false
   }
 }

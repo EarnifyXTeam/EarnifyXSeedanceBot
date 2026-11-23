@@ -67,10 +67,11 @@ export class HiggsfieldService {
 
   /**
    * Long-poll until job completes and returns video URL
+   * Increased to 360s (6 mins) for heavy 3D fantasy animations
    */
-  static async waitForJob(jobId, maxWaitSeconds = 180) {
+  static async waitForJob(jobId, maxWaitSeconds = 360) {
     const startTime = Date.now();
-    console.log(`⏳ Starting polling for Job ID: ${jobId}`);
+    console.log(`⏳ Starting polling for Job ID: ${jobId} (Timeout budget: ${maxWaitSeconds}s)`);
 
     while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
       try {
@@ -100,7 +101,7 @@ export class HiggsfieldService {
 
         if (text.includes('completed') || text.includes('all_terminal: true')) {
           if (urls.length > 0) return urls[0];
-          // Try fetching via job_display if URL wasn't embedded in summary
+          // Try fetching via job_display
           try {
             const displayRes = await mcpClient.callTool('job_display', { id: jobId });
             const dispUrls = this.extractUrls(displayRes);
@@ -110,18 +111,18 @@ export class HiggsfieldService {
           }
         }
 
-        // Wait 4 seconds between poll cycles
-        await new Promise((resolve) => setTimeout(resolve, 4000));
+        // Wait 5 seconds between poll cycles
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       } catch (err) {
         if (err.message?.includes('failed on Higgsfield')) {
           throw err;
         }
-        console.warn(`Polling attempt note for ${jobId}: ${err.message}`);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        console.warn(`Polling note for ${jobId}: ${err.message}`);
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       }
     }
 
-    console.warn(`⚠️ Polling timed out for Job ID: ${jobId}`);
+    console.warn(`⚠️ Polling timed out after ${maxWaitSeconds}s for Job ID: ${jobId}`);
     return null;
   }
 
@@ -163,7 +164,7 @@ export class HiggsfieldService {
       if (match) {
         const jobId = match[0];
         console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
-        const polledVideoUrl = await this.waitForJob(jobId);
+        const polledVideoUrl = await this.waitForJob(jobId, 360);
         return { videoUrl: polledVideoUrl, jobId, text: responseText };
       }
 
@@ -204,7 +205,7 @@ export class HiggsfieldService {
       const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
       const match = responseText.match(uuidRegex);
       if (match) {
-        const polledUrl = await this.waitForJob(match[0], 60);
+        const polledUrl = await this.waitForJob(match[0], 90);
         return { imageUrl: polledUrl, text: responseText };
       }
 

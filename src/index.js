@@ -45,28 +45,28 @@ bot.command('recent', handleRecentAudit);
 
 // Callback Queries (Buttons)
 bot.callbackQuery('btn_video_help', async (ctx) => {
-  try { await ctx.answerCallbackQuery(); } catch (e) {}
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleVideoCommand(ctx);
 });
 
 bot.callbackQuery('btn_image_help', async (ctx) => {
-  try { await ctx.answerCallbackQuery(); } catch (e) {}
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleImageCommand(ctx);
 });
 
 bot.callbackQuery('btn_status', async (ctx) => {
-  try { await ctx.answerCallbackQuery(); } catch (e) {}
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleStatusCommand(ctx);
 });
 
 bot.callbackQuery('btn_help', async (ctx) => {
-  try { await ctx.answerCallbackQuery(); } catch (e) {}
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleHelpCommand(ctx);
 });
 
 // Dynamic Video Generation Callback with Aspect Ratio
 bot.callbackQuery(/^gen_vid:/, async (ctx) => {
-  try { await ctx.answerCallbackQuery({ text: 'Starting rendering...' }); } catch (e) {}
+  try { await ctx.answerCallbackQuery({ text: 'Starting rendering...' }); } catch (e) { }
   return handleVideoGenerationAction(ctx);
 });
 
