@@ -81,9 +81,9 @@ export class UserService {
         });
         users[cleanRefId].referralCount = users[cleanRefId].referrals.length;
 
-        // Reward policy: 3 referrals = Free Lifetime VIP Unlimited!
-        // 1-2 referrals = +1 Free Video Pass each!
-        if (users[cleanRefId].referralCount >= 3 && !users[cleanRefId].isVip) {
+        // Reward policy: 5 referrals = Free Lifetime VIP Unlimited!
+        // 1-4 referrals = +1 Free Video Pass each!
+        if (users[cleanRefId].referralCount >= 5 && !users[cleanRefId].isVip) {
           users[cleanRefId].isVip = true;
           referralReward = 'vip';
         } else {
@@ -113,7 +113,7 @@ export class UserService {
     return {
       referralCount: count,
       isVip: !!user.isVip,
-      remainingForVip: Math.max(0, 3 - count),
+      remainingForVip: Math.max(0, 5 - count),
       referrals: user.referrals || [],
     };
   }

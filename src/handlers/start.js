@@ -43,7 +43,7 @@ export async function handleStart(ctx) {
             regResult.referrerId,
             `💎 <b>CONGRATULATIONS! VIP UNLOCKED!</b> 🎉\n\n` +
             `Aapke referral link se <b>${userName}</b> ne bot join kiya!\n` +
-            `Aapne <b>3 Referrals</b> complete kar liye hain.\n\n` +
+            `Aapne <b>5 Referrals</b> complete kar liye hain.\n\n` +
             `🚀 <b>LIFETIME UNLIMITED VIP ACCESS</b> activate ho gaya hai! Ab jitna chahe utna video banayein bina kisi limit ke!`,
             { parse_mode: 'HTML' }
           );
@@ -53,7 +53,7 @@ export async function handleStart(ctx) {
             `🎉 <b>New Referral Joined!</b>\n\n` +
             `Aapke link se <b>${userName}</b> ne bot join kiya.\n` +
             `🎁 Aapko mila <b>+1 Free Video Pass</b>!\n\n` +
-            `👥 <b>Aapke Referrals:</b> ${stats.referralCount}/3\n` +
+            `👥 <b>Aapke Referrals:</b> ${stats.referralCount}/5\n` +
             `🎯 <i>Sirf ${stats.remainingForVip} referral aur chahiye Lifetime Unlimited VIP unlock karne ke liye!</i>`,
             { parse_mode: 'HTML' }
           );
@@ -75,7 +75,7 @@ Main hoon <b>EarnifyXSeedanceBot</b>, powered by <b>Seedance 2.5</b> & <b>Higgsf
 2️⃣ <b>Risk Disclaimer:</b> <i>Soch-samajh ke hi aapko apna paisa dalna hai. Kisi bhi tarah ke issue ke liye <b>Admin ki koi jimmedari nahi hogi</b>.</i>
 3️⃣ <b>No Refund:</b> <i>Services digital hain, isliye kisi bhi condition me refund nahi hoga.</i>
 4️⃣ <b>Free Trial:</b> <i>Aapko <b>1 Video 100% Free</b> trial milta hai taaki aap quality check kar sakein!</i>
-5️⃣ <b>Refer & Earn:</b> <i>3 dosto ko refer karein aur paayein <b>Lifetime VIP Unlimited Access</b> bilkul Free!</i>
+5️⃣ <b>Refer & Earn:</b> <i>5 dosto ko refer karein aur paayein <b>Lifetime VIP Unlimited Access</b> bilkul Free!</i>
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚡ <b>Quick Commands:</b>
@@ -120,7 +120,7 @@ export async function handleReferCommand(ctx) {
 
   const statusBadge = stats.isVip
     ? '💎 <b>LIFETIME VIP UNLIMITED ACTIVE!</b> 🎉'
-    : `🎯 <b>${stats.referralCount} / 3 Referrals Completed</b> (${stats.remainingForVip} remaining for VIP)`;
+    : `🎯 <b>${stats.referralCount} / 5 Referrals Completed</b> (${stats.remainingForVip} remaining for VIP)`;
 
   const msg = `
 🎁 <b>EarnifyX Refer & Earn Program</b>
@@ -129,7 +129,7 @@ export async function handleReferCommand(ctx) {
 
 🔥 <b>Rewards System:</b>
 • <b>Har 1 Friend:</b> Aapko milega <b>+1 Free AI Video Pass</b>
-• <b>Sirf 3 Friends:</b> Paayein <b>LIFETIME UNLIMITED VIP ACCESS</b> bilkul FREE! 💎
+• <b>Sirf 5 Friends:</b> Paayein <b>LIFETIME UNLIMITED VIP ACCESS</b> bilkul FREE! 💎
 
 📊 <b>Aapka Referral Progress:</b>
 ${statusBadge}
