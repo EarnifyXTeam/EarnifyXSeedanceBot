@@ -219,23 +219,23 @@ bot.catch((err) => {
 
 // Initialize & Launch
 async function main() {
-  console.log('🚀 Initializing EarnifyXSeedanceBot [v1.2 - Auto-Reconnect & 5 Referrals Enabled]...');
+  console.log('🚀 Initializing EarnifyXSeedanceBot [v1.2 - Instant Startup & Auto-Reconnect]...');
 
-  try {
-    // Pre-connect to Higgsfield MCP server
-    await mcpClient.connect();
-    console.log('✅ Higgsfield MCP connection established.');
-  } catch (err) {
-    console.warn('⚠️ MCP connection warning (will retry on first command):', err.message);
-  }
-
+  // Start Telegram bot immediately so users get instant responses
   console.log('🤖 Bot is now polling for Telegram messages...');
   bot.start({
-    drop_pending_updates: true, // Discards stale/expired button clicks from while bot was restarting
+    drop_pending_updates: false, // Process incoming user messages
     onStart: (botInfo) => {
       console.log(`🎉 Logged in as ${botInfo.first_name} (@${botInfo.username})`);
       console.log('⚡ Ready to generate with Seedance 2.5!');
     },
+  });
+
+  // Pre-connect to Higgsfield MCP server in parallel (non-blocking)
+  mcpClient.connect().then(() => {
+    console.log('✅ Higgsfield MCP connection established in background.');
+  }).catch(err => {
+    console.warn('⚠️ MCP background connection notice (will connect on demand):', err.message);
   });
 
   // Healthcheck HTTP Server for Cloud / Caddy reverse proxy
