@@ -42,43 +42,43 @@ bot.command('help', handleHelpCommand);
 
 // Callback Queries (Buttons)
 bot.callbackQuery('btn_video_help', async (ctx) => {
-  await ctx.answerCallbackQuery();
+  try { await ctx.answerCallbackQuery(); } catch (e) {}
   return handleVideoCommand(ctx);
 });
 
 bot.callbackQuery('btn_image_help', async (ctx) => {
-  await ctx.answerCallbackQuery();
+  try { await ctx.answerCallbackQuery(); } catch (e) {}
   return handleImageCommand(ctx);
 });
 
 bot.callbackQuery('btn_status', async (ctx) => {
-  await ctx.answerCallbackQuery();
+  try { await ctx.answerCallbackQuery(); } catch (e) {}
   return handleStatusCommand(ctx);
 });
 
 bot.callbackQuery('btn_help', async (ctx) => {
-  await ctx.answerCallbackQuery();
+  try { await ctx.answerCallbackQuery(); } catch (e) {}
   return handleHelpCommand(ctx);
 });
 
 // Dynamic Video Generation Callback with Aspect Ratio
 bot.callbackQuery(/^gen_vid:/, async (ctx) => {
-  await ctx.answerCallbackQuery({ text: 'Starting rendering...' });
+  try { await ctx.answerCallbackQuery({ text: 'Starting rendering...' }); } catch (e) {}
   return handleVideoGenerationAction(ctx);
 });
 
 // Error handling
 bot.catch((err) => {
+  // Ignore harmless expired Telegram callback query errors
+  if (err.message?.includes('query is too old') || err.description?.includes('query is too old')) {
+    return;
+  }
   console.error('Unhandled bot error:', err);
 });
 
 // Initialize & Launch
 async function main() {
   console.log('🚀 Initializing EarnifyXSeedanceBot...');
-
-  if (config.forceChannelId) {
-    console.log(`📢 Force Channel Join is ENABLED for: ${config.forceChannelId}`);
-  }
 
   try {
     // Pre-connect to Higgsfield MCP server
@@ -90,8 +90,9 @@ async function main() {
 
   console.log('🤖 Bot is now polling for Telegram messages...');
   bot.start({
+    drop_pending_updates: true, // Discards stale/expired button clicks from while bot was restarting
     onStart: (botInfo) => {
-      console.log(`🎉 Logged in as @${botInfo.username}`);
+      console.log(`🎉 Logged in as ${botInfo.first_name} (@${botInfo.username})`);
       console.log('⚡ Ready to generate with Seedance 2.5!');
     },
   });

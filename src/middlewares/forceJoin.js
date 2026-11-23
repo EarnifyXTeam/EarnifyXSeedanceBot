@@ -57,10 +57,14 @@ export async function forceJoinMiddleware(ctx, next) {
       // Register authentic user
       UserService.registerUser(ctx.from);
 
-      await ctx.answerCallbackQuery({
-        text: '🎉 Verified! Official membership confirmed!',
-        show_alert: false,
-      });
+      try {
+        await ctx.answerCallbackQuery({
+          text: '🎉 Verified! Official membership confirmed!',
+          show_alert: false,
+        });
+      } catch (e) {
+        // Safe ignore for expired Telegram callback queries
+      }
 
       try {
         await ctx.deleteMessage();
@@ -71,10 +75,15 @@ export async function forceJoinMiddleware(ctx, next) {
       return handleStart(ctx);
     } else {
       const missingNames = missing.map((ch) => ch.name).join(', ');
-      return await ctx.answerCallbackQuery({
-        text: `❌ Fake click detected! Aapne abhi join nahi kiya: ${missingNames}. Kripya channels open karke JOIN button dabayein!`,
-        show_alert: true,
-      });
+      try {
+        return await ctx.answerCallbackQuery({
+          text: `❌ Fake click detected! Aapne abhi join nahi kiya: ${missingNames}. Kripya channels open karke JOIN button dabayein!`,
+          show_alert: true,
+        });
+      } catch (e) {
+        // Safe ignore for expired queries
+      }
+      return;
     }
   }
 
@@ -92,7 +101,7 @@ export async function forceJoinMiddleware(ctx, next) {
     const lockMessage = `
 🔒 **Membership Verification Required!**
 
-To prevent fake spam and protect our AI GPU resources, **EarnifyXSeedanceBot** requires real members to join our official channels:
+To prevent fake spam and protect our AI GPU resources, **EarnifyX** requires real members to join our official channels:
 
 1️⃣ **EarnifyX Automation**
 2️⃣ **EarnifyX Community**
@@ -106,10 +115,14 @@ To prevent fake spam and protect our AI GPU resources, **EarnifyXSeedanceBot** r
     `.trim();
 
     if (ctx.callbackQuery) {
-      await ctx.answerCallbackQuery({
-        text: '🔒 Kripya dono channels join karein!',
-        show_alert: true,
-      });
+      try {
+        await ctx.answerCallbackQuery({
+          text: '🔒 Kripya dono channels join karein!',
+          show_alert: true,
+        });
+      } catch (e) {
+        // Safe ignore
+      }
     }
 
     return await ctx.reply(lockMessage, {
