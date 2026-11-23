@@ -9,6 +9,36 @@
     "totalGenerations": 0,
     "isBanned": false
   },
+  "1018083930": {
+    "id": "1018083930",
+    "username": "@Chaitu651",
+    "firstName": "Hari",
+    "lastName": "G",
+    "joinedAt": "2026-11-23T08:13:33.500Z",
+    "lastActive": "2026-11-23T08:13:34.299Z",
+    "totalGenerations": 0,
+    "isBanned": false
+  },
+  "1077121243": {
+    "id": "1077121243",
+    "username": "@md331",
+    "firstName": "Md.",
+    "lastName": "Imran HosSen 🐾",
+    "joinedAt": "2026-11-23T08:07:17.152Z",
+    "lastActive": "2026-11-23T08:13:32.780Z",
+    "totalGenerations": 1,
+    "isBanned": false
+  },
+  "1237548133": {
+    "id": "1237548133",
+    "username": "",
+    "firstName": "Start",
+    "lastName": "End",
+    "joinedAt": "2026-11-23T08:13:31.991Z",
+    "lastActive": "2026-11-23T08:13:31.991Z",
+    "totalGenerations": 0,
+    "isBanned": false
+  },
   "1340085820": {
     "id": "1340085820",
     "username": "@bilalchoudhry755",
@@ -35,7 +65,7 @@
     "firstName": "Suraj",
     "lastName": "Bhai 🇮🇳",
     "joinedAt": "2026-11-23T06:40:43.943Z",
-    "lastActive": "2026-11-23T07:35:25.928Z",
+    "lastActive": "2026-11-23T07:57:25.587Z",
     "totalGenerations": 1,
     "isBanned": false
   },
@@ -45,8 +75,8 @@
     "firstName": "Jatinnn",
     "lastName": "",
     "joinedAt": "2026-11-23T06:52:14.006Z",
-    "lastActive": "2026-11-23T07:52:54.059Z",
-    "totalGenerations": 2,
+    "lastActive": "2026-11-23T08:03:50.074Z",
+    "totalGenerations": 3,
     "isBanned": false
   },
   "8508256642": {
@@ -97,6 +127,16 @@
     "joinedAt": "2026-11-23T07:41:53.210Z",
     "lastActive": "2026-11-23T07:45:43.326Z",
     "totalGenerations": 1,
+    "isBanned": false
+  },
+  "5942303881": {
+    "id": "5942303881",
+    "username": "@Azharfazeel111",
+    "firstName": "Azhar 🍅🌱SEED▪️🐾",
+    "lastName": "Fazeel",
+    "joinedAt": "2026-11-23T08:14:13.461Z",
+    "lastActive": "2026-11-23T08:14:16.389Z",
+    "totalGenerations": 0,
     "isBanned": false
   }
 }

@@ -96,7 +96,7 @@ export class HiggsfieldService {
   /**
    * Long-poll until job completes and returns video URL
    */
-  static async waitForJob(jobId, maxWaitSeconds = 360) {
+  static async waitForJob(jobId, maxWaitSeconds = 420) {
     const startTime = Date.now();
     console.log(`⏳ Starting polling for Job ID: ${jobId} (Budget: ${maxWaitSeconds}s)`);
 
@@ -153,18 +153,37 @@ export class HiggsfieldService {
   }
 
   /**
-   * Generate video using Seedance 2.5
+   * Generate video using Seedance 2.5 with Dynamic Duration (up to 30s)
    * @param {string} prompt - Prompt describing the video
    * @param {string} aspectRatio - "16:9" or "9:16"
+   * @param {number} customDuration - Duration in seconds (4-30)
    */
-  static async generateVideo(prompt, aspectRatio = '9:16') {
+  static async generateVideo(prompt, aspectRatio = '9:16', customDuration = null) {
     try {
-      console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt.slice(0, 80)}..." [${aspectRatio}]`);
+      // Auto-detect duration from prompt (e.g. "30 seconds", "30s", "10 sec")
+      let duration = customDuration;
+      if (!duration) {
+        const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)\s*(seconds?|secs?|s)\b/i);
+        if (durationMatch) {
+          duration = parseInt(durationMatch[1], 10);
+        } else if (prompt.includes('30 second') || prompt.includes('30s')) {
+          duration = 30;
+        } else {
+          duration = 5; // Default if not mentioned
+        }
+      }
+
+      // Clamp duration between min: 4 and max: 30
+      duration = Math.max(4, Math.min(30, duration));
+
+      console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt.slice(0, 70)}..." [${aspectRatio}] [${duration}s]`);
 
       const params = {
         model: config.defaultVideoModel,
         prompt: prompt,
         aspect_ratio: aspectRatio,
+        duration: duration, // Passed explicitly! (Supports 4 to 30 seconds)
+        generate_audio: true, // Native AI audio generation
         use_unlim: true, // Ultra 3K free trial unlimited allowance
       };
 
@@ -180,7 +199,7 @@ export class HiggsfieldService {
       const immediateUrls = this.extractUrls(response);
       const immediateVideo = immediateUrls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
       if (immediateVideo) {
-        return { videoUrl: immediateVideo, text: responseText };
+        return { videoUrl: immediateVideo, text: responseText, duration };
       }
 
       // Check for UUID job ID in response text
@@ -190,11 +209,13 @@ export class HiggsfieldService {
       if (match) {
         const jobId = match[0];
         console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
-        const polledVideoUrl = await this.waitForJob(jobId, 360);
-        return { videoUrl: polledVideoUrl, jobId, text: responseText };
+        // Adjust timeout based on duration (30s videos need up to 420s)
+        const timeoutSeconds = duration > 10 ? 420 : 240;
+        const polledVideoUrl = await this.waitForJob(jobId, timeoutSeconds);
+        return { videoUrl: polledVideoUrl, jobId, text: responseText, duration };
       }
 
-      return { videoUrl: null, text: responseText };
+      return { videoUrl: null, text: responseText, duration };
     } catch (error) {
       console.error('Error in generateVideo:', error);
       throw error;
