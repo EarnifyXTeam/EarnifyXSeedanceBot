@@ -68,7 +68,7 @@ export class HiggsfieldService {
   /**
    * Long-poll until job completes and returns video URL
    */
-  static async waitForJob(jobId, maxWaitSeconds = 120) {
+  static async waitForJob(jobId, maxWaitSeconds = 180) {
     const startTime = Date.now();
     console.log(`⏳ Starting polling for Job ID: ${jobId}`);
 
@@ -87,18 +87,36 @@ export class HiggsfieldService {
         }
 
         const text = this.getResponseText(response);
-        if (text.includes('completed') || text.includes('all_terminal: true')) {
-          if (urls.length > 0) return urls[0];
+        console.log(`[Job ${jobId} status snapshot]:`, text.split('\n')[0] || text.slice(0, 100));
+
+        // Only throw if actual job failed (do NOT match 'failed: 0' in summary)
+        if (
+          text.includes(',failed,') ||
+          text.includes('status: failed') ||
+          (text.includes('failed:') && !text.includes('failed: 0'))
+        ) {
+          throw new Error('Video rendering failed on Higgsfield server.');
         }
 
-        if (text.includes('failed')) {
-          throw new Error('Video rendering failed on Higgsfield server.');
+        if (text.includes('completed') || text.includes('all_terminal: true')) {
+          if (urls.length > 0) return urls[0];
+          // Try fetching via job_display if URL wasn't embedded in summary
+          try {
+            const displayRes = await mcpClient.callTool('job_display', { id: jobId });
+            const dispUrls = this.extractUrls(displayRes);
+            if (dispUrls.length > 0) return dispUrls[0];
+          } catch (e) {
+            // ignore
+          }
         }
 
         // Wait 4 seconds between poll cycles
         await new Promise((resolve) => setTimeout(resolve, 4000));
       } catch (err) {
-        console.warn(`Polling attempt error for ${jobId}: ${err.message}`);
+        if (err.message?.includes('failed on Higgsfield')) {
+          throw err;
+        }
+        console.warn(`Polling attempt note for ${jobId}: ${err.message}`);
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
@@ -112,7 +130,7 @@ export class HiggsfieldService {
    * @param {string} prompt - Prompt describing the video
    * @param {string} aspectRatio - "16:9" or "9:16"
    */
-  static async generateVideo(prompt, aspectRatio = '16:9') {
+  static async generateVideo(prompt, aspectRatio = '9:16') {
     try {
       console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt.slice(0, 80)}..." [${aspectRatio}]`);
 
