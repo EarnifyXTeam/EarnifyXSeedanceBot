@@ -2,6 +2,32 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { config } from './config.js';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
+
+function ensureMcpAuthTokens() {
+  try {
+    const authDestDir = path.join(os.homedir(), '.mcp-auth', 'mcp-remote-v1');
+    if (!fs.existsSync(authDestDir)) {
+      fs.mkdirSync(authDestDir, { recursive: true });
+    }
+
+    const srcAuthDir = path.resolve('src', 'auth');
+    if (fs.existsSync(srcAuthDir)) {
+      const files = fs.readdirSync(srcAuthDir);
+      for (const file of files) {
+        const destFile = path.join(authDestDir, file);
+        if (!fs.existsSync(destFile)) {
+          fs.copyFileSync(path.join(srcAuthDir, file), destFile);
+          console.log(`🔑 Auto-provisioned MCP token: ${file}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ MCP auth auto-provisioning warning:', err.message);
+  }
+}
 
 class HiggsfieldMCPClient {
   constructor() {
@@ -22,6 +48,7 @@ class HiggsfieldMCPClient {
 
     this.connectingPromise = (async () => {
       try {
+        ensureMcpAuthTokens();
         console.log('🔄 Connecting to Higgsfield Remote MCP Server...');
         const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 

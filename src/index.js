@@ -1,4 +1,5 @@
 import { Bot } from 'grammy';
+import http from 'http';
 import { config } from './config.js';
 import { handleStart } from './handlers/start.js';
 import { handleVideoCommand, handleVideoGenerationAction } from './handlers/video.js';
@@ -75,14 +76,14 @@ bot.callbackQuery(['buy_plan_050', 'buy_plan_100'], async (ctx) => {
 });
 
 bot.callbackQuery('btn_back_plans', async (ctx) => {
-  try { await ctx.answerCallbackQuery(); } catch (e) {}
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
   return sendPaymentInvoice(ctx, ctx.from?.id);
 });
 
 bot.callbackQuery('check_my_payment', async (ctx) => {
   const latest = BinancePayService.getLatestOrderForUser(ctx.from?.id);
   if (!latest) {
-    try { await ctx.answerCallbackQuery('Koi pending order nahi mila.'); } catch (e) {}
+    try { await ctx.answerCallbackQuery('Koi pending order nahi mila.'); } catch (e) { }
     return ctx.reply('ℹ️ Aapka koi pending order nahi mila. Naya plan select karein.');
   }
   return handleVerifyPayment(ctx, latest.merchantTradeNo);
@@ -157,6 +158,16 @@ async function main() {
       console.log(`🎉 Logged in as ${botInfo.first_name} (@${botInfo.username})`);
       console.log('⚡ Ready to generate with Seedance 2.5!');
     },
+  });
+
+  // Healthcheck HTTP Server for Cloud / Caddy reverse proxy
+  const PORT = process.env.PORT || 10001;
+  const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('EarnifyX Seedance Bot is Running 🚀');
+  });
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`🌐 Healthcheck HTTP server listening on port ${PORT}`);
   });
 }
 

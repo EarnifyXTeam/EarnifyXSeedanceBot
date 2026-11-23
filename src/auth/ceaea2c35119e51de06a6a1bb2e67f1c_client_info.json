@@ -1,0 +1,21 @@
+{
+  "redirect_uris": [
+    "http://127.0.0.1:10429/oauth/callback"
+  ],
+  "token_endpoint_auth_method": "none",
+  "grant_types": [
+    "authorization_code",
+    "refresh_token"
+  ],
+  "response_types": [
+    "code"
+  ],
+  "application_type": "native",
+  "client_name": "MCP CLI Proxy",
+  "client_uri": "https://github.com/modelcontextprotocol/mcp-cli",
+  "scope": "email offline_access openid",
+  "client_id": "cCrwKloDI7K0vRfY",
+  "client_id_issued_at": 1795412668192,
+  "client_secret_expires_at": 0,
+  "issuer": "https://higgsfield.ai/_clerk"
+}
