@@ -222,6 +222,22 @@ export class UserService {
     return false;
   }
 
+  static findUser(identifier) {
+    if (!identifier) return null;
+    const clean = identifier.toString().replace(/^@/, '').trim().toLowerCase();
+    if (users[clean]) return users[clean];
+    for (const u of Object.values(users)) {
+      if (u.username && u.username.replace(/^@/, '').toLowerCase() === clean) {
+        return u;
+      }
+    }
+    return null;
+  }
+
+  static getAllUsers() {
+    return Object.values(users);
+  }
+
   static getTotalUsers() {
     return Object.keys(users).length;
   }

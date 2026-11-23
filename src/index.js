@@ -55,24 +55,76 @@ bot.command(['proof', 'community', 'live'], (ctx) => {
   return ctx.reply(ActivityService.getSocialProofMessage(), { parse_mode: 'HTML' });
 });
 
-// Admin commands to manage credits manually if needed
+// Admin commands to manage VIP and credits manually
+bot.command('admin', async (ctx) => {
+  if (ctx.from?.id?.toString() !== (config.adminId || '').toString()) return;
+  const all = UserService.getAllUsers();
+  const vips = all.filter((u) => u.isVip);
+  const msg = `
+👑 <b>Admin Control Panel</b>
+━━━━━━━━━━━━━━━━━━━━━━
+👥 <b>Total Members:</b> ${all.length}
+💎 <b>VIP Members:</b> ${vips.length}
+
+⚡ <b>Free VIP Dene Ke Commands:</b>
+👉 <code>/setvip &lt;User_ID_ya_@username&gt;</code> — Lifetime Unlimited Free VIP grant karein
+👉 <code>/removevip &lt;User_ID_ya_@username&gt;</code> — VIP access hata dein
+👉 <code>/addcredits &lt;User_ID&gt; &lt;Count&gt;</code> — Extra free credits add karein
+
+💡 <i>Example:</i> <code>/setvip 7150803046</code> ya <code>/setvip @username</code>
+  `.trim();
+  return ctx.reply(msg, { parse_mode: 'HTML' });
+});
+
 bot.command('addcredits', async (ctx) => {
-  if (ctx.from?.id?.toString() !== config.adminId.toString()) return;
+  if (ctx.from?.id?.toString() !== (config.adminId || '').toString()) return;
   const parts = ctx.message.text.split(' ');
-  const targetId = parts[1];
+  const target = parts[1];
   const count = parseInt(parts[2], 10) || 5;
-  if (!targetId) return ctx.reply('Usage: /addcredits <userId> <count>');
-  UserService.addCredits(targetId, count);
-  return ctx.reply(`✅ Added ${count} credits to user ${targetId}`);
+  if (!target) return ctx.reply('Usage: /addcredits <userId ya @username> <count>');
+  const targetUser = UserService.findUser(target) || { id: target };
+  UserService.addCredits(targetUser.id, count);
+  try {
+    await ctx.api.sendMessage(
+      targetUser.id,
+      `🎁 <b>Bonus Credits Added!</b>\n\nAdmin ne aapke account me <b>${count} Free Video Credits</b> add kar diye hain! 🚀`,
+      { parse_mode: 'HTML' }
+    );
+  } catch (e) {}
+  return ctx.reply(`✅ Added <b>${count} credits</b> to user <code>${targetUser.id}</code>`, { parse_mode: 'HTML' });
 });
 
 bot.command('setvip', async (ctx) => {
-  if (ctx.from?.id?.toString() !== config.adminId.toString()) return;
+  if (ctx.from?.id?.toString() !== (config.adminId || '').toString()) return;
   const parts = ctx.message.text.split(' ');
-  const targetId = parts[1];
-  if (!targetId) return ctx.reply('Usage: /setvip <userId>');
-  UserService.setVip(targetId, true);
-  return ctx.reply(`✅ VIP access granted to user ${targetId}`);
+  const target = parts[1];
+  if (!target) return ctx.reply('Usage: /setvip <userId ya @username>');
+  const targetUser = UserService.findUser(target) || { id: target };
+  UserService.setVip(targetUser.id, true);
+  try {
+    await ctx.api.sendMessage(
+      targetUser.id,
+      `🎉 <b>Badhai Ho! VIP Activated!</b>\n\nAdmin ne aapko <b>Lifetime VIP Unlimited Access</b> grant kar diya hai! 💎✨\nAb aap bina kisi payment ke unlimited videos bana sakte hain! 🚀`,
+      { parse_mode: 'HTML' }
+    );
+  } catch (e) {}
+  return ctx.reply(
+    `💎 <b>VIP Unlimited Access Activated!</b>\n` +
+    `• <b>User ID:</b> <code>${targetUser.id}</code>\n` +
+    `• <b>Name:</b> ${targetUser.firstName || targetUser.username || 'User'}\n\n` +
+    `Ab is user ko koi payment nahi karna padega, unlimited free access chalega!`,
+    { parse_mode: 'HTML' }
+  );
+});
+
+bot.command('removevip', async (ctx) => {
+  if (ctx.from?.id?.toString() !== (config.adminId || '').toString()) return;
+  const parts = ctx.message.text.split(' ');
+  const target = parts[1];
+  if (!target) return ctx.reply('Usage: /removevip <userId ya @username>');
+  const targetUser = UserService.findUser(target) || { id: target };
+  UserService.setVip(targetUser.id, false);
+  return ctx.reply(`ℹ️ VIP access revoked for user <code>${targetUser.id}</code>`, { parse_mode: 'HTML' });
 });
 
 // Callback Queries (Buttons)
