@@ -24,13 +24,11 @@ export class HiggsfieldService {
 
     const findInText = (text) => {
       if (typeof text !== 'string') return;
-      // Regex for media URLs (mp4, webm, jpg, jpeg, png, webp, mp3, wav)
       const mediaRegex = /https?:\/\/[^\s"'<>]+\.(mp4|webm|jpg|jpeg|png|webp|mp3|wav)(\?[^\s"'<>]*)?/gi;
       let match;
       while ((match = mediaRegex.exec(text)) !== null) {
         urls.push(match[0]);
       }
-      // General URL regex if no media extension
       const generalUrlRegex = /https?:\/\/[^\s"'<>]+/gi;
       let genMatch;
       while ((genMatch = generalUrlRegex.exec(text)) !== null) {
@@ -66,31 +64,67 @@ export class HiggsfieldService {
   }
 
   /**
+   * Directly check show_generations to find completed video URL for a Job ID
+   */
+  static async getVideoUrlFromGenerations(jobId) {
+    try {
+      const res = await mcpClient.callTool('show_generations', {});
+      const text = this.getResponseText(res);
+      const lines = text.split('\n');
+
+      for (const line of lines) {
+        if (line.includes(jobId)) {
+          console.log(`[show_generations check]: ${line.trim()}`);
+          if (line.includes('completed')) {
+            const urlMatch = line.match(/https?:\/\/[^\s"',]+\.(mp4|webm|jpg|png|webp)/i);
+            if (urlMatch) {
+              return urlMatch[0];
+            }
+          }
+          if (line.includes('failed')) {
+            throw new Error('Video generation status: failed on server.');
+          }
+        }
+      }
+    } catch (e) {
+      if (e.message?.includes('status: failed')) throw e;
+      console.warn(`Note during show_generations check for ${jobId}:`, e.message);
+    }
+    return null;
+  }
+
+  /**
    * Long-poll until job completes and returns video URL
-   * Increased to 360s (6 mins) for heavy 3D fantasy animations
    */
   static async waitForJob(jobId, maxWaitSeconds = 360) {
     const startTime = Date.now();
-    console.log(`⏳ Starting polling for Job ID: ${jobId} (Timeout budget: ${maxWaitSeconds}s)`);
+    console.log(`⏳ Starting polling for Job ID: ${jobId} (Budget: ${maxWaitSeconds}s)`);
 
     while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
       try {
+        // Method 1: Check show_generations (Most reliable direct CloudFront CDN URL source)
+        const directUrl = await this.getVideoUrlFromGenerations(jobId);
+        if (directUrl) {
+          console.log(`🎉 Job ${jobId} COMPLETED via show_generations! URL: ${directUrl}`);
+          return directUrl;
+        }
+
+        // Method 2: Fallback to jobs_wait
         const response = await mcpClient.callTool('jobs_wait', {
           jobs: [{ index: 0, job_id: jobId }],
-          timeout_seconds: 15,
+          timeout_seconds: 10,
         });
 
         const urls = this.extractUrls(response);
         const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
         if (videoUrl) {
-          console.log(`🎉 Job ${jobId} completed! Video URL: ${videoUrl}`);
+          console.log(`🎉 Job ${jobId} completed via jobs_wait! Video URL: ${videoUrl}`);
           return videoUrl;
         }
 
         const text = this.getResponseText(response);
         console.log(`[Job ${jobId} status snapshot]:`, text.split('\n')[0] || text.slice(0, 100));
 
-        // Only throw if actual job failed (do NOT match 'failed: 0' in summary)
         if (
           text.includes(',failed,') ||
           text.includes('status: failed') ||
@@ -99,28 +133,20 @@ export class HiggsfieldService {
           throw new Error('Video rendering failed on Higgsfield server.');
         }
 
-        if (text.includes('completed') || text.includes('all_terminal: true')) {
-          if (urls.length > 0) return urls[0];
-          // Try fetching via job_display
-          try {
-            const displayRes = await mcpClient.callTool('job_display', { id: jobId });
-            const dispUrls = this.extractUrls(displayRes);
-            if (dispUrls.length > 0) return dispUrls[0];
-          } catch (e) {
-            // ignore
-          }
-        }
-
-        // Wait 5 seconds between poll cycles
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        // Wait 4-5 seconds between poll cycles
+        await new Promise((resolve) => setTimeout(resolve, 4000));
       } catch (err) {
-        if (err.message?.includes('failed on Higgsfield')) {
+        if (err.message?.includes('failed on Higgsfield') || err.message?.includes('status: failed')) {
           throw err;
         }
         console.warn(`Polling note for ${jobId}: ${err.message}`);
-        await new Promise((resolve) => setTimeout(resolve, 6000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
+
+    // Final check on show_generations right before timing out
+    const finalCheckUrl = await this.getVideoUrlFromGenerations(jobId);
+    if (finalCheckUrl) return finalCheckUrl;
 
     console.warn(`⚠️ Polling timed out after ${maxWaitSeconds}s for Job ID: ${jobId}`);
     return null;
