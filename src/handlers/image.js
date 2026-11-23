@@ -31,33 +31,24 @@ To generate an image, provide a prompt:
 
   UserService.startGenerating(userId);
 
-  await ctx.reply(`🎨 **Creating Image:**\n"${prompt}"\n\n⏳ *Rendering high-res visual...*`, {
-    parse_mode: 'Markdown',
-  });
+  await ctx.reply(`🎨 Creating Image:\n"${prompt.slice(0, 200)}..."\n\n⏳ Rendering high-res visual...`);
 
   try {
-    const response = await HiggsfieldService.generateImage(prompt, '1:1');
-    const urls = HiggsfieldService.extractUrls(response);
-    const responseText = HiggsfieldService.getResponseText(response);
-
+    const result = await HiggsfieldService.generateImage(prompt, '1:1');
     UserService.recordGeneration(userId);
 
-    const imageUrl = urls.find((u) => u.match(/\.(jpg|jpeg|png|webp)(\?.*)?$/i)) || urls[0];
-
-    if (imageUrl) {
-      await ctx.replyWithPhoto(imageUrl, {
-        caption: `🖼️ **Generated Visual**\n\nPrompt: "${prompt}"\n\n⚡ *Powered by earnifyXAutomation*`,
-        parse_mode: 'Markdown',
+    if (result.imageUrl) {
+      await ctx.replyWithPhoto(result.imageUrl, {
+        caption: `🖼️ Generated Visual\n\n⚡ Powered by earnifyXAutomation`,
       });
     } else {
       await ctx.reply(
-        `✅ **Generation Result:**\n\n${responseText.slice(0, 3500)}\n\n⚡ *Powered by earnifyXAutomation*`,
-        { parse_mode: 'Markdown' }
+        `✅ Result:\n\n${(result.text || '').slice(0, 3000)}\n\n⚡ Powered by earnifyXAutomation`
       );
     }
   } catch (error) {
     console.error('Error in handleImageCommand:', error);
-    await ctx.reply(`❌ **Failed to generate image:**\n\`${error.message || error}\``);
+    await ctx.reply(`❌ Failed to generate image:\n${error.message || error}`);
   } finally {
     UserService.stopGenerating(userId);
   }

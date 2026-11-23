@@ -56,15 +56,16 @@ To generate a video, please provide a prompt:
     timestamp: Date.now(),
   });
 
-  // Short callback_data: ~18 bytes total
+  // Short callback_data: ~18 bytes total (fixes BUTTON_DATA_INVALID)
   const keyboard = new InlineKeyboard()
     .text('📱 9:16 (Reels / Shorts)', `gen_vid:9_16:${promptId}`)
     .text('🖥️ 16:9 (Cinema / YouTube)', `gen_vid:16_9:${promptId}`);
 
-  const previewPrompt = prompt.length > 300 ? prompt.slice(0, 300) + '...' : prompt;
+  const previewPrompt = prompt.length > 250 ? prompt.slice(0, 250) + '...' : prompt;
 
+  // No Markdown parsing on prompt text to avoid "can't parse entities" error with special symbols
   await ctx.reply(
-    `⏳ **Prompt Received:**\n"${previewPrompt}"\n\nChoose aspect ratio to start generation:`,
+    `⏳ Prompt Received:\n"${previewPrompt}"\n\nChoose aspect ratio to start generation:`,
     {
       reply_markup: keyboard,
     }
@@ -99,40 +100,32 @@ export async function handleVideoGenerationAction(ctx) {
 
   try {
     await ctx.editMessageText(
-      `🚀 **Generating with Seedance 2.5...**\n\n📝 **Prompt:** "${prompt.slice(0, 250)}..."\n📐 **Aspect Ratio:** ${aspectRatio}\n\n⏳ *AI video rendering takes ~30-90 seconds. Please wait...*`,
-      { parse_mode: 'Markdown' }
+      `🚀 Generating with Seedance 2.5...\n\n📝 Prompt: "${prompt.slice(0, 150)}..."\n📐 Aspect Ratio: ${aspectRatio}\n\n⏳ Video rendering is queued on Higgsfield GPU. Please wait...`
     );
   } catch (e) {
     await ctx.reply(
-      `🚀 **Generating with Seedance 2.5...**\n\n📝 **Prompt:** "${prompt.slice(0, 250)}..."\n📐 **Aspect Ratio:** ${aspectRatio}\n\n⏳ *AI video rendering takes ~30-90 seconds. Please wait...*`,
-      { parse_mode: 'Markdown' }
+      `🚀 Generating with Seedance 2.5...\n\n📝 Prompt: "${prompt.slice(0, 150)}..."\n📐 Aspect Ratio: ${aspectRatio}\n\n⏳ Video rendering is queued on Higgsfield GPU. Please wait...`
     );
   }
 
   try {
-    const response = await HiggsfieldService.generateVideo(prompt, aspectRatio);
-    const urls = HiggsfieldService.extractUrls(response);
-    const responseText = HiggsfieldService.getResponseText(response);
-
+    const result = await HiggsfieldService.generateVideo(prompt, aspectRatio);
     UserService.recordGeneration(userId);
 
-    const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i)) || urls[0];
-
-    if (videoUrl) {
-      await ctx.replyWithVideo(videoUrl, {
-        caption: `🎬 **Generated with Seedance 2.5**\n\nRatio: ${aspectRatio}\n\n⚡ *Powered by earnifyXAutomation*`,
-        parse_mode: 'Markdown',
+    if (result.videoUrl) {
+      await ctx.replyWithVideo(result.videoUrl, {
+        caption: `🎬 Generated with Seedance 2.5\n\nRatio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
       });
     } else {
+      // Send plain text without Markdown to avoid formatting parse crashes
       await ctx.reply(
-        `✅ **Generation Response:**\n\n${responseText.slice(0, 3500)}\n\n⚡ *Powered by earnifyXAutomation*`,
-        { parse_mode: 'Markdown' }
+        `✅ Generation Submitted (Job ID: ${result.jobId || 'Pending'}):\n\n${result.text.slice(0, 3000)}\n\n⚡ Powered by earnifyXAutomation`
       );
     }
   } catch (error) {
     console.error('Error in handleVideoGenerationAction:', error);
     await ctx.reply(
-      `❌ **Generation Failed:**\n\`${error.message || error}\`\n\nPlease try again or verify prompt parameters.`
+      `❌ Generation Failed:\n${error.message || error}\n\nPlease try again or verify prompt parameters.`
     );
   } finally {
     UserService.stopGenerating(userId);

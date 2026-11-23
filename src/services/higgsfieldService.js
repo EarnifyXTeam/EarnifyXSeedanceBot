@@ -66,19 +66,61 @@ export class HiggsfieldService {
   }
 
   /**
+   * Long-poll until job completes and returns video URL
+   */
+  static async waitForJob(jobId, maxWaitSeconds = 120) {
+    const startTime = Date.now();
+    console.log(`⏳ Starting polling for Job ID: ${jobId}`);
+
+    while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
+      try {
+        const response = await mcpClient.callTool('jobs_wait', {
+          jobs: [{ index: 0, job_id: jobId }],
+          timeout_seconds: 15,
+        });
+
+        const urls = this.extractUrls(response);
+        const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
+        if (videoUrl) {
+          console.log(`🎉 Job ${jobId} completed! Video URL: ${videoUrl}`);
+          return videoUrl;
+        }
+
+        const text = this.getResponseText(response);
+        if (text.includes('completed') || text.includes('all_terminal: true')) {
+          if (urls.length > 0) return urls[0];
+        }
+
+        if (text.includes('failed')) {
+          throw new Error('Video rendering failed on Higgsfield server.');
+        }
+
+        // Wait 4 seconds between poll cycles
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+      } catch (err) {
+        console.warn(`Polling attempt error for ${jobId}: ${err.message}`);
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+
+    console.warn(`⚠️ Polling timed out for Job ID: ${jobId}`);
+    return null;
+  }
+
+  /**
    * Generate video using Seedance 2.5
    * @param {string} prompt - Prompt describing the video
    * @param {string} aspectRatio - "16:9" or "9:16"
    */
   static async generateVideo(prompt, aspectRatio = '16:9') {
     try {
-      console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt}" [${aspectRatio}]`);
+      console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt.slice(0, 80)}..." [${aspectRatio}]`);
 
       const params = {
         model: config.defaultVideoModel,
         prompt: prompt,
         aspect_ratio: aspectRatio,
-        use_unlim: true, // Uses Ultra 3K free trial unlimited allowance
+        use_unlim: true, // Ultra 3K free trial unlimited allowance
       };
 
       const response = await mcpClient.callTool('generate_video', {
@@ -86,8 +128,28 @@ export class HiggsfieldService {
         context: 'Telegram user video generation request via EarnifyXSeedanceBot',
       });
 
-      console.log('Video generation raw response received');
-      return response;
+      const responseText = this.getResponseText(response);
+      console.log('Video generation submission response:', responseText.slice(0, 200));
+
+      // Check if URL is immediately returned
+      const immediateUrls = this.extractUrls(response);
+      const immediateVideo = immediateUrls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
+      if (immediateVideo) {
+        return { videoUrl: immediateVideo, text: responseText };
+      }
+
+      // Check for UUID job ID in response text
+      const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+      const match = responseText.match(uuidRegex);
+
+      if (match) {
+        const jobId = match[0];
+        console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
+        const polledVideoUrl = await this.waitForJob(jobId);
+        return { videoUrl: polledVideoUrl, jobId, text: responseText };
+      }
+
+      return { videoUrl: null, text: responseText };
     } catch (error) {
       console.error('Error in generateVideo:', error);
       throw error;
@@ -96,12 +158,10 @@ export class HiggsfieldService {
 
   /**
    * Generate image
-   * @param {string} prompt - Prompt describing the image
-   * @param {string} aspectRatio - "1:1", "16:9", "9:16"
    */
   static async generateImage(prompt, aspectRatio = '1:1') {
     try {
-      console.log(`🖼️ Submitting Image Generation: "${prompt}" [${aspectRatio}]`);
+      console.log(`🖼️ Submitting Image Generation: "${prompt.slice(0, 80)}..." [${aspectRatio}]`);
 
       const params = {
         model: 'gpt_image_2_6',
@@ -115,7 +175,22 @@ export class HiggsfieldService {
         context: 'Telegram user image generation request via EarnifyXSeedanceBot',
       });
 
-      return response;
+      const responseText = this.getResponseText(response);
+      const immediateUrls = this.extractUrls(response);
+      const immediateImage = immediateUrls.find((u) => u.match(/\.(jpg|jpeg|png|webp)(\?.*)?$/i));
+
+      if (immediateImage) {
+        return { imageUrl: immediateImage, text: responseText };
+      }
+
+      const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+      const match = responseText.match(uuidRegex);
+      if (match) {
+        const polledUrl = await this.waitForJob(match[0], 60);
+        return { imageUrl: polledUrl, text: responseText };
+      }
+
+      return { imageUrl: immediateUrls[0] || null, text: responseText };
     } catch (error) {
       console.error('Error in generateImage:', error);
       throw error;
@@ -124,20 +199,12 @@ export class HiggsfieldService {
 
   /**
    * Generate voice / audio
-   * @param {string} text - Text for speech generation
    */
   static async generateAudio(text) {
     try {
-      console.log(`🎙️ Submitting Voice Generation: "${text}"`);
-
-      const params = {
-        prompt: text,
-      };
-
-      const response = await mcpClient.callTool('generate_audio', {
-        params,
-      });
-
+      console.log(`🎙️ Submitting Voice Generation: "${text.slice(0, 80)}..."`);
+      const params = { prompt: text };
+      const response = await mcpClient.callTool('generate_audio', { params });
       return response;
     } catch (error) {
       console.error('Error in generateAudio:', error);
