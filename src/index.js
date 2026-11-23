@@ -6,6 +6,7 @@ import { handleImageCommand } from './handlers/image.js';
 import { handleAudioCommand } from './handlers/audio.js';
 import { handleStatusCommand } from './handlers/status.js';
 import { handleHelpCommand } from './handlers/help.js';
+import { forceJoinMiddleware } from './middlewares/forceJoin.js';
 import { mcpClient } from './mcpClient.js';
 
 if (!config.telegramToken) {
@@ -26,6 +27,9 @@ bot.use(async (ctx, next) => {
   }
   return await next();
 });
+
+// Force Channel Subscription Middleware (Grow Followers)
+bot.use(forceJoinMiddleware);
 
 // Command Handlers
 bot.command('start', handleStart);
@@ -71,6 +75,10 @@ bot.catch((err) => {
 // Initialize & Launch
 async function main() {
   console.log('🚀 Initializing EarnifyXSeedanceBot...');
+
+  if (config.forceChannelId) {
+    console.log(`📢 Force Channel Join is ENABLED for: ${config.forceChannelId}`);
+  }
 
   try {
     // Pre-connect to Higgsfield MCP server
