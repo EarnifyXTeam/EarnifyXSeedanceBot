@@ -19,7 +19,7 @@ export const config = {
     ? process.env.ALLOWED_USERS.split(',').map((id) => id.trim()).filter(Boolean)
     : [],
   defaultVideoModel: process.env.DEFAULT_VIDEO_MODEL || 'seedance_2_5',
-  defaultAspectRatio: process.env.DEFAULT_ASPECT_RATIO || '16:9',
+  defaultAspectRatio: process.env.DEFAULT_ASPECT_RATIO || '9:16', // Default 9:16 for Reels/Shorts
 
   // Dual Force Channels
   forceChannels: [

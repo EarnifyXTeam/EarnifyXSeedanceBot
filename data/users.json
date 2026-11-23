@@ -45,7 +45,7 @@
     "firstName": "Vittu",
     "lastName": "Jaiswal",
     "joinedAt": "2026-11-23T06:52:36.741Z",
-    "lastActive": "2026-11-23T06:54:42.385Z",
+    "lastActive": "2026-11-23T07:07:54.346Z",
     "totalGenerations": 1,
     "isBanned": false
   },
@@ -57,6 +57,26 @@
     "joinedAt": "2026-11-23T06:52:38.072Z",
     "lastActive": "2026-11-23T06:54:56.006Z",
     "totalGenerations": 0,
+    "isBanned": false
+  },
+  "8607765771": {
+    "id": "8607765771",
+    "username": "",
+    "firstName": "Vijay",
+    "lastName": "",
+    "joinedAt": "2026-11-23T07:07:57.937Z",
+    "lastActive": "2026-11-23T07:08:39.200Z",
+    "totalGenerations": 1,
+    "isBanned": false
+  },
+  "6441459089": {
+    "id": "6441459089",
+    "username": "@mydickinyourmom",
+    "firstName": "👌",
+    "lastName": "",
+    "joinedAt": "2026-11-23T07:08:52.201Z",
+    "lastActive": "2026-11-23T07:14:33.391Z",
+    "totalGenerations": 1,
     "isBanned": false
   }
 }
