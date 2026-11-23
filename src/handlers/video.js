@@ -101,7 +101,7 @@ To generate an instant video, provide your prompt:
         const result = await HiggsfieldService.generateVideo(prompt, aspectRatio, requestedDuration);
         UserService.recordGeneration(userId);
 
-        // Record into history database
+        // Record into history database & auto-archive locally
         HistoryService.logCreation({
           userId,
           username,
@@ -110,6 +110,7 @@ To generate an instant video, provide your prompt:
           type: 'video',
           ratio: aspectRatio,
           url: result.videoUrl || '',
+          duration: `${result.duration || requestedDuration}s`,
         });
 
         if (result.videoUrl) {
