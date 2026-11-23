@@ -1,0 +1,15 @@
+{
+  "PAY_7150803046_1795430899071": {
+    "merchantTradeNo": "PAY_7150803046_1795430899071",
+    "userId": "7150803046",
+    "username": "@EarnifyXAutomation",
+    "amount": "0.50",
+    "currency": "USDT",
+    "planName": "Test Plan",
+    "credits": 5,
+    "status": "INITIAL",
+    "createdAt": "2026-11-23T10:48:19.072Z",
+    "checkoutUrl": null,
+    "prepayId": null
+  }
+}
