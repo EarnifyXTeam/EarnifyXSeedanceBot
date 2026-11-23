@@ -1,0 +1,27 @@
+{
+  "name": "earnifyx-seedance-bot",
+  "version": "1.0.0",
+  "description": "High-performance Telegram Bot powered by Higgsfield MCP & Seedance 2.5 for unlimited AI video, image and voice generation",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "telegram-bot",
+    "seedance",
+    "higgsfield",
+    "mcp",
+    "ai-video",
+    "earnifyxautomation"
+  ],
+  "author": "earnifyXAutomation",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "grammy": "^1.34.0"
+  }
+}
