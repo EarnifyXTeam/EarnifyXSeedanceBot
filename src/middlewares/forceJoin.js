@@ -3,27 +3,38 @@ import { config } from '../config.js';
 import { handleStart } from '../handlers/start.js';
 
 /**
- * Checks if a user is a member of the required channel
+ * Checks which required channels the user has NOT joined
+ * Returns array of channels user needs to join
  */
-export async function isMember(ctx, userId) {
-  if (!config.forceChannelId) return true;
+export async function getMissingChannels(ctx, userId) {
+  if (!config.forceChannels || config.forceChannels.length === 0) return [];
 
-  try {
-    const member = await ctx.api.getChatMember(config.forceChannelId, userId);
-    const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
-    return validStatuses.includes(member.status);
-  } catch (error) {
-    // If bot is not yet admin or channel ID is misconfigured, log and don't block user
-    console.warn(`⚠️ Force Join Check Warning: Ensure the bot is an Admin in ${config.forceChannelId}. Error: ${error.message}`);
-    return true;
+  const missing = [];
+  const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
+
+  for (const channel of config.forceChannels) {
+    if (!channel.id) continue;
+    try {
+      const member = await ctx.api.getChatMember(channel.id, userId);
+      if (!validStatuses.includes(member.status)) {
+        missing.push(channel);
+      }
+    } catch (error) {
+      console.warn(
+        `⚠️ Force Join check warning for ${channel.name} (${channel.id}): ${error.message}. Ensure bot is Admin!`
+      );
+      // If error (e.g., bot not admin yet), don't block
+    }
   }
+
+  return missing;
 }
 
 /**
- * Force Channel Join Middleware
+ * Force Channel Join Middleware supporting multiple channels
  */
 export async function forceJoinMiddleware(ctx, next) {
-  if (!config.forceChannelId) {
+  if (!config.forceChannels || config.forceChannels.length === 0) {
     return await next();
   }
 
@@ -34,52 +45,59 @@ export async function forceJoinMiddleware(ctx, next) {
 
   // Handle the verification button click
   if (ctx.callbackQuery?.data === 'verify_force_join') {
-    const joined = await isMember(ctx, userId);
+    const missing = await getMissingChannels(ctx, userId);
 
-    if (joined) {
+    if (missing.length === 0) {
       await ctx.answerCallbackQuery({
-        text: '🎉 Verification successful! Welcome aboard!',
+        text: '🎉 Verification successful! Access unlocked!',
         show_alert: false,
       });
 
       try {
         await ctx.deleteMessage();
       } catch (e) {
-        // Ignore if cannot delete
+        // Ignore deletion failure
       }
 
       return handleStart(ctx);
     } else {
+      const missingNames = missing.map((ch) => ch.name).join(', ');
       return await ctx.answerCallbackQuery({
-        text: '⚠️ You have not joined the channel yet. Please join first and click verify!',
+        text: `⚠️ Aapne abhi join nahi kiya: ${missingNames}. Kripya dono channels join karein!`,
         show_alert: true,
       });
     }
   }
 
   // Check membership for normal messages & commands
-  const joined = await isMember(ctx, userId);
+  const missing = await getMissingChannels(ctx, userId);
 
-  if (!joined) {
-    const keyboard = new InlineKeyboard()
-      .url('📢 Join Official Channel', config.forceChannelLink)
-      .row()
-      .text('✅ I Have Joined / Verify', 'verify_force_join');
+  if (missing.length > 0) {
+    const keyboard = new InlineKeyboard();
+
+    // Add buttons for each channel
+    for (const ch of config.forceChannels) {
+      keyboard.url(`📢 Join ${ch.name}`, ch.link).row();
+    }
+    keyboard.text('✅ I Have Joined Both / Verify', 'verify_force_join');
 
     const lockMessage = `
-🔒 **Access Locked — Channel Join Required!**
+🔒 **Access Locked — Channels Join Required!**
 
-To use **EarnifyXSeedanceBot** and generate unlimited AI videos, images, and voiceovers with **Seedance 2.5**, you must join our official community channel first!
+To use **EarnifyXSeedanceBot** and generate unlimited AI videos with **Seedance 2.5**, you must join both of our official community channels:
 
-👉 **Step 1:** Click **"Join Official Channel"** below.
-👉 **Step 2:** After joining, click **"✅ I Have Joined / Verify"** to instantly unlock all bot features!
+1️⃣ **EarnifyX Automation**
+2️⃣ **EarnifyX Community**
+
+👉 **Step 1:** Click both join buttons below.
+👉 **Step 2:** Click **"✅ I Have Joined Both / Verify"** to instantly unlock all features!
 
 ⚡ *Powered by earnifyXAutomation*
     `.trim();
 
     if (ctx.callbackQuery) {
       await ctx.answerCallbackQuery({
-        text: '🔒 Please join our channel first to use this feature!',
+        text: '🔒 Please join both channels first to unlock the bot!',
         show_alert: true,
       });
     }
