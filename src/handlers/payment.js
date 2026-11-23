@@ -8,23 +8,19 @@ import { config } from '../config.js';
  */
 export async function sendPaymentInvoice(ctx, userId) {
   const keyboard = new InlineKeyboard()
-    .text('💳 Plan 1: $0.50 (5 Videos)', 'buy_plan_050')
-    .row()
-    .text('💎 Plan 2: $1.00 (Unlimited Access)', 'buy_plan_100')
+    .text('💎 Buy VIP Plan ($1.00 USDT)', 'buy_plan_100')
     .row()
     .text('🔄 Check Latest Payment Status', 'check_my_payment');
 
   const text = `
 ⚠️ <b>Free Trial Over (1/1 Video Used)!</b>
 
-Aapka <b>1 Free Trial Video</b> complete ho chuka hai. Agle videos generate karne ke liye chhota sa balance add kijiye:
+Aapka <b>1 Free Trial Video</b> complete ho chuka hai. Unlimited videos generate karne ke liye VIP Plan lijiye:
 
-💰 <b>Available Plans:</b>
-• <b>Starter Plan:</b> <code>$0.50 USDT</code> ➔ 5 High Quality Videos
-• <b>VIP Plan:</b> <code>$1.00 USDT</code> ➔ Unlimited Access
+💎 <b>VIP Plan:</b> <code>$1.00 USDT</code> ➔ <b>Unlimited Video Generations</b> 🚀
 
 ⚡ <b>Instant & Automated Payment:</b>
-Binance Pay se instant auto-verification hota hai. Niche apna plan select karein:
+Binance Pay se instant auto-verification hota hai. Niche button dabakar pay karein:
 
 ⚠️ <b>IMPORTANT DISCLAIMER / NOTE:</b>
 <i>Video kitna banega iski koi guarantee nahi hogi. Soch samajh ke aapko paisa dalna hai, isme admin ki koi jimmedari nahi hogi. No refunds.</i>
@@ -192,9 +188,7 @@ export async function handleManualPaySubmit(ctx) {
   // Send 1-click Approval prompt to Admin
   if (config.adminId) {
     const adminKeyboard = new InlineKeyboard()
-      .text('✅ Approve $0.50 (5 Videos)', `adm_appr_5_${userId}`)
-      .row()
-      .text('💎 Approve $1.00 (Unlimited)', `adm_appr_vip_${userId}`)
+      .text('💎 Approve $1.00 (VIP Unlimited)', `adm_appr_vip_${userId}`)
       .row()
       .text('❌ Reject', `adm_reject_${userId}`);
 
