@@ -25,42 +25,43 @@ export async function handleStart(ctx) {
 
     const refText = regResult.referrerId ? `\n• <b>Referred By:</b> <code>${regResult.referrerId}</code>` : '';
 
-    await ActivityService.notifyAdmin(
+    // Non-blocking background notification to admin (keeps user response instant)
+    ActivityService.notifyAdmin(
       ctx.api,
       `👤 <b>New Member Joined Bot!</b>\n\n` +
       `• <b>Name:</b> ${ctx.from.first_name || 'N/A'}\n` +
       `• <b>Username:</b> @${ctx.from.username || 'none'}\n` +
       `• <b>User ID:</b> <code>${ctx.from.id}</code>${refText}\n` +
       `• <b>Total Members:</b> ${UserService.getTotalUsers()}`
-    );
+    ).catch(() => {});
 
-    // Notify Referrer if reward triggered
+    // Notify Referrer in background if reward triggered
     if (regResult.referrerId && regResult.referralReward) {
-      try {
-        const stats = UserService.getReferralStats(regResult.referrerId);
-        if (regResult.referralReward === 'vip') {
-          await ctx.api.sendMessage(
-            regResult.referrerId,
-            `💎 <b>CONGRATULATIONS! VIP UNLOCKED!</b> 🎉\n\n` +
-            `Aapke referral link se <b>${userName}</b> ne bot join kiya!\n` +
-            `Aapne <b>5 Referrals</b> complete kar liye hain.\n\n` +
-            `🚀 <b>LIFETIME UNLIMITED VIP ACCESS</b> activate ho gaya hai! Ab jitna chahe utna video banayein bina kisi limit ke!`,
-            { parse_mode: 'HTML' }
-          );
-        } else {
-          await ctx.api.sendMessage(
-            regResult.referrerId,
-            `🎉 <b>New Referral Joined!</b>\n\n` +
-            `Aapke link se <b>${userName}</b> ne bot join kiya.\n` +
-            `🎁 Aapko mila <b>+1 Free Video Pass</b>!\n\n` +
-            `👥 <b>Aapke Referrals:</b> ${stats.referralCount}/5\n` +
-            `🎯 <i>Sirf ${stats.remainingForVip} referral aur chahiye Lifetime Unlimited VIP unlock karne ke liye!</i>`,
-            { parse_mode: 'HTML' }
-          );
-        }
-      } catch (err) {
-        // Suppress message failure if user blocked bot
-      }
+      (async () => {
+        try {
+          const stats = UserService.getReferralStats(regResult.referrerId);
+          if (regResult.referralReward === 'vip') {
+            await ctx.api.sendMessage(
+              regResult.referrerId,
+              `💎 <b>CONGRATULATIONS! VIP UNLOCKED!</b> 🎉\n\n` +
+              `Aapke referral link se <b>${userName}</b> ne bot join kiya!\n` +
+              `Aapne <b>5 Referrals</b> complete kar liye hain.\n\n` +
+              `🚀 <b>LIFETIME UNLIMITED VIP ACCESS</b> activate ho gaya hai! Ab jitna chahe utna video banayein bina kisi limit ke!`,
+              { parse_mode: 'HTML' }
+            );
+          } else {
+            await ctx.api.sendMessage(
+              regResult.referrerId,
+              `🎉 <b>New Referral Joined!</b>\n\n` +
+              `Aapke link se <b>${userName}</b> ne bot join kiya.\n` +
+              `🎁 Aapko mila <b>+1 Free Video Pass</b>!\n\n` +
+              `👥 <b>Aapke Referrals:</b> ${stats.referralCount}/5\n` +
+              `🎯 <i>Sirf ${stats.remainingForVip} referral aur chahiye Lifetime Unlimited VIP unlock karne ke liye!</i>`,
+              { parse_mode: 'HTML' }
+            );
+          }
+        } catch (err) {}
+      })().catch(() => {});
     }
   }
 

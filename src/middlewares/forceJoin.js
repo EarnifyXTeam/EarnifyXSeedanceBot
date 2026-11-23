@@ -3,31 +3,44 @@ import { config } from '../config.js';
 import { handleStart } from '../handlers/start.js';
 import { UserService } from '../services/userService.js';
 
+// In-memory fast cache for verified members to make bot response instantaneous (0ms lag)
+const verifiedMembersCache = new Set();
+
 /**
  * Checks which required channels the user has NOT joined
- * Direct live verification from Telegram official servers (cannot be faked)
+ * Uses Promise.all for parallel checking and fast in-memory caching
  */
 export async function getMissingChannels(ctx, userId) {
   if (!config.forceChannels || config.forceChannels.length === 0) return [];
+  const idStr = userId.toString();
+  if (verifiedMembersCache.has(idStr)) return [];
 
-  const missing = [];
   const validStatuses = ['creator', 'administrator', 'member', 'restricted'];
 
-  for (const channel of config.forceChannels) {
-    if (!channel.id) continue;
-    try {
-      const member = await ctx.api.getChatMember(channel.id, userId);
-      if (!validStatuses.includes(member.status)) {
-        missing.push(channel);
-      }
-    } catch (error) {
-      console.warn(
-        `⚠️ Force Join check warning for ${channel.name} (${channel.id}): ${error.message}. Ensure bot is Admin in the channel!`
-      );
-    }
-  }
+  try {
+    const checks = await Promise.all(
+      config.forceChannels.map(async (channel) => {
+        if (!channel.id) return null;
+        try {
+          const member = await ctx.api.getChatMember(channel.id, userId);
+          if (!validStatuses.includes(member.status)) {
+            return channel;
+          }
+        } catch (error) {
+          // If bot is not admin or channel check fails, don't block real users
+        }
+        return null;
+      })
+    );
 
-  return missing;
+    const missing = checks.filter(Boolean);
+    if (missing.length === 0) {
+      verifiedMembersCache.add(idStr);
+    }
+    return missing;
+  } catch (e) {
+    return [];
+  }
 }
 
 /**
