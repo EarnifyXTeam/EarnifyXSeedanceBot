@@ -9,7 +9,7 @@ import { config } from '../config.js';
  */
 export async function sendPaymentInvoice(ctx, userId) {
   const keyboard = new InlineKeyboard()
-    .text('💎 Buy VIP Plan ($1.00 USDT)', 'buy_plan_100')
+    .text('💎 Buy VIP Plan ($0.50 USDT)', 'buy_plan_050')
     .row()
     .text('🔄 Check Latest Payment Status', 'check_my_payment');
 
@@ -18,7 +18,7 @@ export async function sendPaymentInvoice(ctx, userId) {
 
 Aapka <b>1 Free Trial Video</b> complete ho chuka hai. Unlimited videos generate karne ke liye VIP Plan lijiye:
 
-💎 <b>VIP Plan:</b> <code>$1.00 USDT</code> ➔ <b>Unlimited Video Generations</b> 🚀
+💎 <b>VIP Plan:</b> <code>$0.50 USDT</code> ➔ <b>Unlimited Video Generations</b> 🚀
 
 ⚡ <b>Instant & Automated Payment:</b>
 Binance Pay se instant auto-verification hota hai. Niche button dabakar pay karein:
@@ -44,9 +44,9 @@ export async function handleBuyPlan(ctx, planType) {
   const userId = ctx.from?.id;
   const username = ctx.from?.username ? `@${ctx.from.username}` : (ctx.from?.first_name || 'User');
 
-  const amount = planType === 'buy_plan_050' ? '0.50' : '1.00';
-  const planName = planType === 'buy_plan_050' ? '$0.50 (5 Videos)' : '$1.00 (Unlimited Access)';
-  const credits = planType === 'buy_plan_050' ? 5 : 9999;
+  const amount = '0.50';
+  const planName = '$0.50 (VIP Unlimited Access)';
+  const credits = 9999;
 
   await ctx.reply('⏳ <i>Binance Pay secure payment order generate ho raha hai...</i>', { parse_mode: 'HTML' });
 
@@ -189,7 +189,7 @@ export async function handleManualPaySubmit(ctx) {
   // Send 1-click Approval prompt to Admin
   if (config.adminId) {
     const adminKeyboard = new InlineKeyboard()
-      .text('💎 Approve $1.00 (VIP Unlimited)', `adm_appr_vip_${userId}`)
+      .text('💎 Approve $0.50 (VIP Unlimited)', `adm_appr_vip_${userId}`)
       .row()
       .text('❌ Reject', `adm_reject_${userId}`);
 
@@ -243,11 +243,11 @@ export async function handleAdminApproval(ctx) {
       firstName: targetUser?.firstName,
     });
     try { await ctx.answerCallbackQuery('Approved VIP Unlimited!'); } catch (e) { }
-    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n💎 <b>APPROVED: Activated Unlimited VIP Access ($1.00)!</b>`, { parse_mode: 'HTML' });
+    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n💎 <b>APPROVED: Activated Unlimited VIP Access ($0.50)!</b>`, { parse_mode: 'HTML' });
     try {
       await ctx.api.sendMessage(
         targetUserId,
-        `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>Unlimited VIP Access ($1.00)</b> activate ho chuka hai! Enjoy unlimited video generations. 🚀`,
+        `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>Unlimited VIP Access ($0.50)</b> activate ho chuka hai! Enjoy unlimited video generations. 🚀`,
         { parse_mode: 'HTML' }
       );
     } catch (e) { }

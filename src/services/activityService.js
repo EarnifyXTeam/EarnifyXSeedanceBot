@@ -41,7 +41,7 @@ if (activities.length === 0) {
       type: 'vip_activated',
       userMasked: '@KingF*****',
       nameMasked: 'King ***',
-      details: '$1.00 VIP Unlimited Plan Activated 💎',
+      details: '$0.50 VIP Unlimited Plan Activated 💎',
       timestamp: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
     },
     {
@@ -124,7 +124,7 @@ export class ActivityService {
       type: 'vip_activated',
       userMasked: maskUsername(username),
       nameMasked: maskName(firstName),
-      details: '$1.00 VIP Unlimited Access Activated 💎',
+      details: '$0.50 VIP Unlimited Access Activated 💎',
       timestamp: new Date().toISOString(),
     };
     activities.unshift(event);

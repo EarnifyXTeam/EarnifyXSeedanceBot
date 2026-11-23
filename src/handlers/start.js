@@ -40,7 +40,7 @@ Main hoon <b>EarnifyXSeedanceBot</b>, powered by <b>Seedance 2.5</b> & <b>Higgsf
 
 ⚡ <b>Quick Commands:</b>
 🎬 <code>/video &lt;prompt&gt;</code> — Seedance 2.5 AI Video (Ya seedhe prompt type karein)
-💳 <code>/buy</code> — Buy VIP Plan ($1.00 Unlimited)
+💳 <code>/buy</code> — Buy VIP Plan ($0.50 Unlimited)
 🔴 <code>/proof</code> — Live Community Activity & Delivery Proof
 📊 <code>/status</code> — Apna balance & credits check karein
 ℹ️ <code>/help</code> — Video prompt guide
@@ -50,7 +50,7 @@ Niche diye gaye button par click karke shuru karein! 👇
 
   const keyboard = new InlineKeyboard()
     .text('🎬 Generate Video', 'btn_video_help')
-    .text('💎 Buy VIP Plan ($1.00)', 'btn_back_plans')
+    .text('💎 Buy VIP Plan ($0.50)', 'btn_back_plans')
     .row()
     .text('🔴 Live Proof & Activity', 'btn_live_proof')
     .text('📊 Check Status', 'btn_status')
