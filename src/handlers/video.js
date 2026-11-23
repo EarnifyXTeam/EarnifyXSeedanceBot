@@ -8,7 +8,14 @@ export async function handleVideoCommand(ctx) {
   const userId = ctx.from?.id;
   const username = ctx.from?.username;
   const firstName = ctx.from?.first_name;
-  const prompt = ctx.match?.trim();
+  
+  // Support both /video <prompt> and direct text messages
+  let prompt = '';
+  if (typeof ctx.match === 'string' && ctx.match.trim()) {
+    prompt = ctx.match.trim();
+  } else if (ctx.message?.text) {
+    prompt = ctx.message.text.replace(/^\/video(@\w+)?\s*/i, '').trim();
+  }
 
   if (!prompt) {
     const usageMsg = `
@@ -146,7 +153,7 @@ To generate an instant video, provide your prompt:
             } catch (bgErr) {
               console.error('Background delivery error for Job', result.jobId, bgErr.message);
             }
-          })().catch(() => {});
+          })().catch(() => { });
         } else {
           await ctx.reply(
             `⚠️ Video submission note:\n${(result.text || '').slice(0, 1000)}\n\nKripya thoda wait karein ya naya prompt try karein.`

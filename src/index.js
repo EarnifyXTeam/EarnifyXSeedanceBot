@@ -70,6 +70,15 @@ bot.callbackQuery(/^gen_vid:/, async (ctx) => {
   return handleVideoGenerationAction(ctx);
 });
 
+// Direct Text Message Handler: Automatically generate video if user sends plain prompt in private chat
+bot.on('message:text', async (ctx) => {
+  if (ctx.message.text.startsWith('/')) return; // Ignore commands
+  if (ctx.chat.type === 'private') {
+    ctx.match = ctx.message.text;
+    return handleVideoCommand(ctx);
+  }
+});
+
 // Error handling
 bot.catch((err) => {
   // Ignore harmless expired Telegram callback query errors
