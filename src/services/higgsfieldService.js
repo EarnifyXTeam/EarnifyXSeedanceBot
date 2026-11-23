@@ -77,9 +77,10 @@ export class HiggsfieldService {
 
       const item = resById?.structuredContent?.items?.[0];
       if (item) {
-        if (item.status === 'completed' && item.url) {
-          console.log(`[show_generation_by_ids] Job ${jobId} completed! URL: ${item.url}`);
-          return item.url;
+        const rawUrl = item.results?.rawUrl || item.url;
+        if (item.status === 'completed' && rawUrl) {
+          console.log(`[show_generation_by_ids] Job ${jobId} completed! URL: ${rawUrl}`);
+          return rawUrl;
         }
         if (item.status === 'failed') {
           throw new Error('Video generation status: failed on server.');

@@ -117,9 +117,39 @@ To generate an instant video, provide your prompt:
           await ctx.replyWithVideo(result.videoUrl, {
             caption: `🎬 Generated with Seedance 2.5\n⏱️ Duration: ${result.duration || requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
           });
+        } else if (result.jobId) {
+          // Video is still rendering on Higgsfield GPU (queue / extended render)
+          await ctx.reply(
+            `⏳ **GPU Render in Progress!**\n\n📌 **Job ID:** \`${result.jobId}\`\n⏱️ **Duration:** ${requestedDuration} Seconds\n📐 **Ratio:** ${aspectRatio}\n\nSeedance 2.5 server par aapka video abhi render ho raha hai. Jaise hi GPU render complete karega, bot **isi chat me automatically video send kar dega**! 🚀`
+          );
+
+          // Background auto-delivery poller (waits up to 10 more minutes)
+          (async () => {
+            try {
+              console.log(`🔄 Background delivery poller started for Job ID: ${result.jobId}`);
+              const bgUrl = await HiggsfieldService.waitForJob(result.jobId, 600);
+              if (bgUrl) {
+                await ctx.api.sendVideo(ctx.chat.id, bgUrl, {
+                  caption: `🎬 **Aapka Video Ready Hai!** (Seedance 2.5)\n⏱️ Duration: ${requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
+                });
+                HistoryService.logCreation({
+                  userId,
+                  username,
+                  firstName,
+                  prompt,
+                  type: 'video',
+                  ratio: aspectRatio,
+                  url: bgUrl,
+                  duration: `${requestedDuration}s`,
+                });
+              }
+            } catch (bgErr) {
+              console.error('Background delivery error for Job', result.jobId, bgErr.message);
+            }
+          })().catch(() => {});
         } else {
           await ctx.reply(
-            `✅ Video Rendered (Job ID: ${result.jobId || 'Completed'}):\n\n${(result.text || '').slice(0, 3000)}\n\n⚡ Powered by earnifyXAutomation`
+            `⚠️ Video submission note:\n${(result.text || '').slice(0, 1000)}\n\nKripya thoda wait karein ya naya prompt try karein.`
           );
         }
       },
