@@ -64,17 +64,39 @@ export class HiggsfieldService {
   }
 
   /**
-   * Directly check show_generations to find completed video URL for a Job ID
+   * Directly check job status and URL for a Job ID using show_generation_by_ids & show_generations
    */
   static async getVideoUrlFromGenerations(jobId) {
     try {
+      // 1. Check targeted job details via show_generation_by_ids
+      const resById = await mcpClient.callTool(
+        'show_generation_by_ids',
+        { jobs: [{ index: 0, job_id: jobId }] },
+        30000
+      );
+
+      const item = resById?.structuredContent?.items?.[0];
+      if (item) {
+        if (item.status === 'completed' && item.url) {
+          console.log(`[show_generation_by_ids] Job ${jobId} completed! URL: ${item.url}`);
+          return item.url;
+        }
+        if (item.status === 'failed') {
+          throw new Error('Video generation status: failed on server.');
+        }
+      }
+
+      const urls = this.extractUrls(resById);
+      const directVideo = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
+      if (directVideo) return directVideo;
+
+      // 2. Fallback check: show_generations feed
       const res = await mcpClient.callTool('show_generations', {}, 30000);
       const text = this.getResponseText(res);
       const lines = text.split('\n');
 
       for (const line of lines) {
         if (line.includes(jobId)) {
-          console.log(`[show_generations snapshot]: ${line.trim()}`);
           if (line.includes('completed')) {
             const urlMatch = line.match(/https?:\/\/[^\s"',]+\.(mp4|webm|jpg|png|webp)/i);
             if (urlMatch) {
