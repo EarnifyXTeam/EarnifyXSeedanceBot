@@ -133,10 +133,10 @@ export class HiggsfieldService {
     try {
       let duration = customDuration;
       if (!duration) {
-        const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)\s*(seconds?|secs?|s)\b/i);
+        const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)[\s\-_]*(seconds?|secs?|s)\b/i);
         if (durationMatch) {
           duration = parseInt(durationMatch[1], 10);
-        } else if (prompt.includes('30 second') || prompt.includes('30s')) {
+        } else if (/\b30[\s\-_]*(second|sec|s)\b/i.test(prompt) || prompt.includes('30-second') || prompt.includes('30s') || prompt.includes('30 second')) {
           duration = 30;
         } else {
           duration = 5;

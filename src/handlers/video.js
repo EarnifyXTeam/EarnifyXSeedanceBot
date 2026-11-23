@@ -49,12 +49,13 @@ To generate an instant video, provide your prompt:
 
   // Detect Requested Duration (Default: 5s, or up to 30s)
   let requestedDuration = 5;
-  const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)\s*(seconds?|secs?|s)\b/i);
+  const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)[\s\-_]*(seconds?|secs?|s)\b/i);
   if (durationMatch) {
     requestedDuration = parseInt(durationMatch[1], 10);
-  } else if (prompt.includes('30 second') || prompt.includes('30s')) {
+  } else if (/\b30[\s\-_]*(second|sec|s)\b/i.test(prompt) || prompt.includes('30-second') || prompt.includes('30s') || prompt.includes('30 second')) {
     requestedDuration = 30;
   }
+  requestedDuration = Math.max(4, Math.min(30, requestedDuration));
 
   UserService.startGenerating(userId);
 
