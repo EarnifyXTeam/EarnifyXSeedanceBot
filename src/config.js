@@ -21,6 +21,13 @@ export const config = {
   defaultVideoModel: process.env.DEFAULT_VIDEO_MODEL || 'seedance_2_5',
   defaultAspectRatio: process.env.DEFAULT_ASPECT_RATIO || '9:16', // Default 9:16 for Reels/Shorts
 
+  // Admin and Binance Pay Configuration
+  adminId: process.env.ADMIN_ID || '7150803046',
+  binancePayApiKey: process.env.BINANCE_PAY_API_KEY || '',
+  binancePaySecretKey: process.env.BINANCE_PAY_SECRET_KEY || '',
+  binancePayId: process.env.BINANCE_PAY_ID || '',
+  usdtWalletAddress: process.env.USDT_WALLET_ADDRESS || '',
+
   // Dual Force Channels
   forceChannels: [
     {

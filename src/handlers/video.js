@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { UserService } from '../services/userService.js';
 import { QueueService } from '../services/queueService.js';
 import { HistoryService } from '../services/historyService.js';
+import { sendPaymentInvoice } from './payment.js';
 
 function makeProgressBar(percent, length = 10) {
   const p = Math.max(0, Math.min(100, Math.round(percent)));
@@ -52,6 +53,12 @@ To generate an instant video, provide your prompt:
     return ctx.reply('⏳ **Aapka ek video pehle se render ya queue me hai!** Kripya pehle uske complete hone ka wait karein.');
   }
 
+  // 1 Free Video Trial, then Binance Paywall Check
+  const access = UserService.checkAccess(userId);
+  if (!access.allowed) {
+    return sendPaymentInvoice(ctx, userId);
+  }
+
   // Anti-Flood: 15s Cooldown
   const remaining = UserService.checkCooldown(userId, 15);
   if (remaining > 0) {
@@ -77,6 +84,7 @@ To generate an instant video, provide your prompt:
   requestedDuration = Math.max(4, Math.min(30, requestedDuration));
 
   UserService.startGenerating(userId);
+  UserService.consumeAccess(userId);
 
   const cleanPreview = prompt.length > 150 ? prompt.slice(0, 150) + '...' : prompt;
   const safePreview = escapeHtml(cleanPreview);

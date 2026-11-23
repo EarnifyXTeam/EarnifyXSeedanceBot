@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { config } from '../config.js';
 
 const DATA_DIR = path.resolve('data');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
@@ -55,6 +56,8 @@ export class UserService {
         joinedAt: now,
         lastActive: now,
         totalGenerations: 0,
+        credits: 0,
+        isVip: false,
         isBanned: false,
       };
       console.log(`👤 New real user registered: ${users[id].firstName} (${users[id].username || id})`);
@@ -92,13 +95,79 @@ export class UserService {
     return false;
   }
 
-  static recordGeneration(userId) {
+  static getUser(userId) {
+    return users[userId.toString()] || null;
+  }
+
+  /**
+   * Check if user is eligible to generate a video
+   * Rule: 1 video free trial, then paid (credits or VIP)
+   */
+  static checkAccess(userId) {
     const id = userId.toString();
+    const adminId = (config.adminId || '').toString();
+
+    // 1. Super Admin bypass (unlimited access)
+    if (adminId && id === adminId) {
+      return { allowed: true, reason: 'admin', remaining: 9999 };
+    }
+
+    const user = users[id] || { totalGenerations: 0, credits: 0, isVip: false };
+
+    // 2. VIP bypass
+    if (user.isVip) {
+      return { allowed: true, reason: 'vip', remaining: 9999 };
+    }
+
+    // 3. Paid Credits
+    if ((user.credits || 0) > 0) {
+      return { allowed: true, reason: 'credits', remaining: user.credits };
+    }
+
+    // 4. Free 1st video trial
+    if ((user.totalGenerations || 0) < 1) {
+      return { allowed: true, reason: 'free_trial', remaining: 1 };
+    }
+
+    // 5. Free trial exhausted and no credits
+    return { allowed: false, reason: 'paywall_required', remaining: 0 };
+  }
+
+  /**
+   * Deduct credit or record generation after start
+   */
+  static consumeAccess(userId) {
+    const id = userId.toString();
+    const adminId = (config.adminId || '').toString();
+
     if (users[id]) {
+      if (id !== adminId && !users[id].isVip && (users[id].credits || 0) > 0) {
+        users[id].credits = Math.max(0, users[id].credits - 1);
+      }
       users[id].totalGenerations = (users[id].totalGenerations || 0) + 1;
       users[id].lastActive = new Date().toISOString();
       saveUsers();
     }
+  }
+
+  static addCredits(userId, amount) {
+    const id = userId.toString();
+    if (users[id]) {
+      users[id].credits = (users[id].credits || 0) + Number(amount);
+      saveUsers();
+      return users[id].credits;
+    }
+    return 0;
+  }
+
+  static setVip(userId, isVip = true) {
+    const id = userId.toString();
+    if (users[id]) {
+      users[id].isVip = !!isVip;
+      saveUsers();
+      return true;
+    }
+    return false;
   }
 
   static getTotalUsers() {
