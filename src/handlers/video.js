@@ -4,11 +4,23 @@ import { UserService } from '../services/userService.js';
 import { QueueService } from '../services/queueService.js';
 import { HistoryService } from '../services/historyService.js';
 
+function makeProgressBar(percent, length = 10) {
+  const p = Math.max(0, Math.min(100, Math.round(percent)));
+  const filled = Math.min(length, Math.max(0, Math.round((p / 100) * length)));
+  const empty = length - filled;
+  return `[${'▰'.repeat(filled)}${'▱'.repeat(empty)}] ${p}%`;
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export async function handleVideoCommand(ctx) {
   const userId = ctx.from?.id;
   const username = ctx.from?.username;
   const firstName = ctx.from?.first_name;
-  
+
   // Support both /video <prompt> and direct text messages
   let prompt = '';
   if (typeof ctx.match === 'string' && ctx.match.trim()) {
@@ -66,7 +78,8 @@ To generate an instant video, provide your prompt:
 
   UserService.startGenerating(userId);
 
-  const cleanPreview = prompt.length > 180 ? prompt.slice(0, 180) + '...' : prompt;
+  const cleanPreview = prompt.length > 150 ? prompt.slice(0, 150) + '...' : prompt;
+  const safePreview = escapeHtml(cleanPreview);
   let statusMessage = null;
 
   try {
@@ -75,37 +88,73 @@ To generate an instant video, provide your prompt:
       onQueueWaiting: async (pos) => {
         const estSec = pos * 45;
         try {
+          const queueText = `⏳ <b>Server Busy hai (GPU Slots Full)</b>\n\n📋 <b>Queue Position:</b> #${pos}\n⏱️ <b>Est. Wait:</b> ~${estSec}s\n\nJaise hi slot free hoga, video auto-render start ho jayega!`;
           if (!statusMessage) {
-            statusMessage = await ctx.reply(
-              `⏳ Server busy hai (All 12 GPU slots running).\n\n📋 Request Queue: **Position #${pos}**\n⏱️ Est. wait time: ~${estSec}s.\n\nJaise hi slot free hoga, rendering automatically start ho jayegi!`
-            );
+            statusMessage = await ctx.reply(queueText, { parse_mode: 'HTML' });
           } else {
-            await ctx.api.editMessageText(
-              ctx.chat.id,
-              statusMessage.message_id,
-              `⏳ Queue Update: **Position #${pos}**\n⏱️ Est. wait time: ~${estSec}s.`
-            );
+            await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, queueText, { parse_mode: 'HTML' });
           }
         } catch (e) {
-          // Ignore edit message errors
+          // Ignore
         }
       },
       onStart: async () => {
         try {
-          const waitTimeText = requestedDuration > 10 ? '~2-5 minutes (Extended 30s Render)' : '~30-60 seconds';
-          const startText = `🚀 GPU Slot Active!\n\nGenerating with Seedance 2.5...\n📝 Prompt: "${cleanPreview}"\n📐 Aspect Ratio: ${aspectRatio}\n⏱️ Duration: ${requestedDuration} Seconds\n\n⏳ Video rendering is in progress (${waitTimeText}). Please wait...`;
+          const waitTimeText = requestedDuration > 10 ? '~2-5 min' : '~30-60 sec';
+          const startBar = makeProgressBar(5, 10);
+          const startText = `<b>🚀 GPU Slot Active! Generating with Seedance 2.5 ⚡</b>\n\n` +
+            `📝 <b>Prompt:</b> "${safePreview}"\n` +
+            `📐 <b>Ratio:</b> ${aspectRatio} | ⏱️ <b>Duration:</b> ${requestedDuration}s\n` +
+            `📌 <b>Job ID:</b> <code>Allocating...</code>\n\n` +
+            `<pre>${startBar}</pre>\n` +
+            `🔄 <b>Live Status:</b> ⏳ Initializing GPU compute slot...\n` +
+            `⏱️ <b>Est. Time:</b> ${waitTimeText}\n\n` +
+            `⚡ <i>Powered by earnifyXAutomation</i>`;
 
           if (statusMessage) {
-            await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, startText);
+            await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, startText, {
+              parse_mode: 'HTML',
+            });
           } else {
-            statusMessage = await ctx.reply(startText);
+            statusMessage = await ctx.reply(startText, { parse_mode: 'HTML' });
           }
         } catch (e) {
-          // Ignore edit error
+          // Ignore
         }
       },
       taskFn: async () => {
-        const result = await HiggsfieldService.generateVideo(prompt, aspectRatio, requestedDuration);
+        let lastEditTime = 0;
+        const result = await HiggsfieldService.generateVideo(
+          prompt,
+          aspectRatio,
+          requestedDuration,
+          async ({ percent, stage, elapsedSec, jobId }) => {
+            const now = Date.now();
+            if (now - lastEditTime < 4500 && percent < 100) return;
+            lastEditTime = now;
+
+            try {
+              const bar = makeProgressBar(percent, 10);
+              const cardText = `<b>🚀 GPU Slot Active! Generating with Seedance 2.5 ⚡</b>\n\n` +
+                `📝 <b>Prompt:</b> "${safePreview}"\n` +
+                `📐 <b>Ratio:</b> ${aspectRatio} | ⏱️ <b>Duration:</b> ${requestedDuration}s\n` +
+                `📌 <b>Job ID:</b> <code>${jobId ? jobId.slice(0, 13) + '...' : 'Allocating...'}</code>\n\n` +
+                `<pre>${bar}</pre>\n` +
+                `🔄 <b>Live Status:</b> ${escapeHtml(stage)}\n` +
+                `⏱️ <b>Time Elapsed:</b> ${elapsedSec || 0}s\n\n` +
+                `⚡ <i>Powered by earnifyXAutomation</i>`;
+
+              if (statusMessage) {
+                await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, cardText, {
+                  parse_mode: 'HTML',
+                });
+              }
+            } catch (editErr) {
+              // Ignore
+            }
+          }
+        );
+
         UserService.recordGeneration(userId);
 
         // Record into history database & auto-archive locally
@@ -127,7 +176,8 @@ To generate an instant video, provide your prompt:
         } else if (result.jobId) {
           // Video is still rendering on Higgsfield GPU (queue / extended render)
           await ctx.reply(
-            `⏳ **GPU Render in Progress!**\n\n📌 **Job ID:** \`${result.jobId}\`\n⏱️ **Duration:** ${requestedDuration} Seconds\n📐 **Ratio:** ${aspectRatio}\n\nSeedance 2.5 server par aapka video abhi render ho raha hai. Jaise hi GPU render complete karega, bot **isi chat me automatically video send kar dega**! 🚀`
+            `⏳ <b>GPU Render in Progress!</b>\n\n📌 <b>Job ID:</b> <code>${result.jobId}</code>\n⏱️ <b>Duration:</b> ${requestedDuration} Seconds\n📐 <b>Ratio:</b> ${aspectRatio}\n\nSeedance 2.5 cluster par aapka video process ho raha hai. Jaise hi render finalize hoga, bot <b>isi chat me automatically video upload kar dega</b>! 🚀`,
+            { parse_mode: 'HTML' }
           );
 
           // Background auto-delivery poller (waits up to 10 more minutes)
@@ -137,7 +187,8 @@ To generate an instant video, provide your prompt:
               const bgUrl = await HiggsfieldService.waitForJob(result.jobId, 600);
               if (bgUrl) {
                 await ctx.api.sendVideo(ctx.chat.id, bgUrl, {
-                  caption: `🎬 **Aapka Video Ready Hai!** (Seedance 2.5)\n⏱️ Duration: ${requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
+                  caption: `🎬 <b>Aapka Video Ready Hai!</b> (Seedance 2.5)\n⏱️ Duration: ${requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
+                  parse_mode: 'HTML',
                 });
                 HistoryService.logCreation({
                   userId,
@@ -153,10 +204,11 @@ To generate an instant video, provide your prompt:
             } catch (bgErr) {
               console.error('Background delivery error for Job', result.jobId, bgErr.message);
             }
-          })().catch(() => { });
+          })().catch(() => {});
         } else {
           await ctx.reply(
-            `⚠️ Video submission note:\n${(result.text || '').slice(0, 1000)}\n\nKripya thoda wait karein ya naya prompt try karein.`
+            `⚠️ Video submission note:\n${escapeHtml((result.text || '').slice(0, 1000))}\n\nKripya thoda wait karein ya naya prompt try karein.`,
+            { parse_mode: 'HTML' }
           );
         }
       },

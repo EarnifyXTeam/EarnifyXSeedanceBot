@@ -116,32 +116,66 @@ export class HiggsfieldService {
   }
 
   /**
-   * Fast snapshot polling until job completes and returns video URL
+   * Fast snapshot polling with progress updates until job completes and returns video URL
    */
-  static async waitForJob(jobId, maxWaitSeconds = 480) {
+  static async waitForJob(jobId, maxWaitSeconds = 480, onProgress = null) {
     const startTime = Date.now();
     console.log(`⏳ Monitoring Job ID: ${jobId} (Timeout budget: ${maxWaitSeconds}s)...`);
 
     while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
       try {
-        // Fast Check: show_generations (direct CloudFront CDN URL)
+        const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+
+        // Fast Check: show_generation_by_ids & show_generations
         const directUrl = await this.getVideoUrlFromGenerations(jobId);
         if (directUrl) {
           console.log(`🎉 Job ${jobId} COMPLETED! CDN URL: ${directUrl}`);
+          if (onProgress) {
+            await onProgress({
+              percent: 100,
+              stage: '🎉 Render 100% Complete! Delivering Video...',
+              elapsedSec,
+              jobId,
+            });
+          }
           return directUrl;
         }
 
-        // Wait 8 seconds before next check to give Higgsfield GPU time
-        await new Promise((resolve) => setTimeout(resolve, 8000));
+        // Calculate progress percentage smoothly up to 95%
+        const estProgress = Math.min(95, Math.max(10, Math.floor(10 + (elapsedSec / maxWaitSeconds) * 85)));
+
+        let stage = '🎬 Rendering Neural Frames & Motion on GPU...';
+        if (estProgress < 30) {
+          stage = '⏳ In GPU Queue (Waiting for free compute slot)...';
+        } else if (estProgress < 55) {
+          stage = '⚡ Generating Keyframes & Motion Dynamics...';
+        } else if (estProgress < 75) {
+          stage = '🎨 Refining 720p Resolution & Physics Details...';
+        } else {
+          stage = '🎵 Synthesizing Audio & Finalizing MP4 Stream...';
+        }
+
+        if (onProgress) {
+          await onProgress({
+            percent: estProgress,
+            stage,
+            elapsedSec,
+            estRemainingSec: Math.max(5, maxWaitSeconds - elapsedSec),
+            jobId,
+          });
+        }
+
+        // Wait 6 seconds before next check to give Higgsfield GPU time
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       } catch (err) {
         if (err.message?.includes('failed on Higgsfield') || err.message?.includes('status: failed')) {
           throw err;
         }
-        await new Promise((resolve) => setTimeout(resolve, 8000));
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       }
     }
 
-    // Final check on show_generations right before timing out
+    // Final check right before timing out
     const finalCheckUrl = await this.getVideoUrlFromGenerations(jobId);
     if (finalCheckUrl) return finalCheckUrl;
 
@@ -150,9 +184,9 @@ export class HiggsfieldService {
   }
 
   /**
-   * Generate video using Seedance 2.5 with Dynamic Duration (up to 30s)
+   * Generate video using Seedance 2.5 with Dynamic Duration (up to 30s) and Live Progress
    */
-  static async generateVideo(prompt, aspectRatio = '9:16', customDuration = null) {
+  static async generateVideo(prompt, aspectRatio = '9:16', customDuration = null, onProgress = null) {
     try {
       let duration = customDuration;
       if (!duration) {
@@ -203,8 +237,16 @@ export class HiggsfieldService {
       if (match) {
         const jobId = match[0];
         console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
+        if (onProgress) {
+          await onProgress({
+            percent: 10,
+            stage: '🚀 Job Allocated on GPU Cluster...',
+            elapsedSec: 2,
+            jobId,
+          });
+        }
         const timeoutSeconds = duration > 10 ? 480 : 240;
-        const polledVideoUrl = await this.waitForJob(jobId, timeoutSeconds);
+        const polledVideoUrl = await this.waitForJob(jobId, timeoutSeconds, onProgress);
         return { videoUrl: polledVideoUrl, jobId, text: responseText, duration };
       }
 
