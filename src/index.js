@@ -167,7 +167,7 @@ bot.catch((err) => {
 
 // Initialize & Launch
 async function main() {
-  console.log('🚀 Initializing EarnifyXSeedanceBot...');
+  console.log('🚀 Initializing EarnifyXSeedanceBot [v1.2 - Auto-Reconnect & 5 Referrals Enabled]...');
 
   try {
     // Pre-connect to Higgsfield MCP server

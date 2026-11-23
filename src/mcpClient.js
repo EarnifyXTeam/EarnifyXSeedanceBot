@@ -38,7 +38,7 @@ class HiggsfieldMCPClient {
   }
 
   async connect() {
-    if (this.isConnected && this.client) {
+    if (this.isConnected && this.client && this.transport) {
       return this.client;
     }
 
