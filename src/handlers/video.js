@@ -1,6 +1,7 @@
 import { HiggsfieldService } from '../services/higgsfieldService.js';
 import { config } from '../config.js';
 import { UserService } from '../services/userService.js';
+import { QueueService } from '../services/queueService.js';
 
 export async function handleVideoCommand(ctx) {
   const userId = ctx.from?.id;
@@ -24,9 +25,9 @@ To generate an instant video, provide your prompt:
     return ctx.reply(usageMsg, { parse_mode: 'Markdown' });
   }
 
-  // Anti-Spam: Check if already generating
+  // Anti-Spam: Check if user already has an active task running
   if (UserService.isGenerating(userId)) {
-    return ctx.reply('⏳ **Aapka ek video pehle se render ho raha hai!** Kripya pehle uske complete hone ka wait karein.');
+    return ctx.reply('⏳ **Aapka ek video pehle se render ya queue me hai!** Kripya pehle uske complete hone ka wait karein.');
   }
 
   // Anti-Flood: 15s Cooldown
@@ -43,30 +44,66 @@ To generate an instant video, provide your prompt:
     aspectRatio = '9:16';
   }
 
-  // Start generation immediately in 9:16 (Zero friction!)
   UserService.startGenerating(userId);
 
   const cleanPreview = prompt.length > 200 ? prompt.slice(0, 200) + '...' : prompt;
-
-  await ctx.reply(
-    `🚀 Generating with Seedance 2.5...\n\n📝 Prompt: "${cleanPreview}"\n📐 Aspect Ratio: ${aspectRatio} (Reels / Shorts)\n\n⏳ Video rendering is queued on Higgsfield GPU. Please wait ~30-90 seconds...`
-  );
+  let statusMessage = null;
 
   try {
-    const result = await HiggsfieldService.generateVideo(prompt, aspectRatio);
-    UserService.recordGeneration(userId);
+    await QueueService.enqueue({
+      userId,
+      onQueueWaiting: async (pos) => {
+        const estSec = pos * 35;
+        try {
+          if (!statusMessage) {
+            statusMessage = await ctx.reply(
+              `⏳ Server busy hai (All 12 GPU slots running).\n\n📋 Aapka Request Queue me hai: **Position #${pos}**\n⏱️ Estimated wait time: ~${estSec} seconds.\n\nJaise hi slot free hoga, rendering automatically start ho jayegi!`
+            );
+          } else {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              `⏳ Queue Update: **Position #${pos}**\n⏱️ Estimated wait time: ~${estSec} seconds.`
+            );
+          }
+        } catch (e) {
+          // Ignore edit message errors
+        }
+      },
+      onStart: async () => {
+        try {
+          if (statusMessage) {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              `🚀 GPU Slot Allocated!\n\nGenerating with Seedance 2.5...\n📝 Prompt: "${cleanPreview}"\n📐 Ratio: ${aspectRatio}\n\n⏳ Video rendering is active. Please wait ~30-60 seconds...`
+            );
+          } else {
+            statusMessage = await ctx.reply(
+              `🚀 Generating with Seedance 2.5...\n\n📝 Prompt: "${cleanPreview}"\n📐 Aspect Ratio: ${aspectRatio} (Reels / Shorts)\n\n⏳ Video rendering is queued on Higgsfield GPU. Please wait ~30-90 seconds...`
+            );
+          }
+        } catch (e) {
+          // Ignore edit error
+        }
+      },
+      taskFn: async () => {
+        const result = await HiggsfieldService.generateVideo(prompt, aspectRatio);
+        UserService.recordGeneration(userId);
 
-    if (result.videoUrl) {
-      await ctx.replyWithVideo(result.videoUrl, {
-        caption: `🎬 Generated with Seedance 2.5\n📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
-      });
-    } else {
-      await ctx.reply(
-        `✅ Generation Submitted (Job ID: ${result.jobId || 'Pending'}):\n\n${(result.text || '').slice(0, 3000)}\n\n⚡ Powered by earnifyXAutomation`
-      );
-    }
+        if (result.videoUrl) {
+          await ctx.replyWithVideo(result.videoUrl, {
+            caption: `🎬 Generated with Seedance 2.5\n📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
+          });
+        } else {
+          await ctx.reply(
+            `✅ Generation Submitted (Job ID: ${result.jobId || 'Pending'}):\n\n${(result.text || '').slice(0, 3000)}\n\n⚡ Powered by earnifyXAutomation`
+          );
+        }
+      },
+    });
   } catch (error) {
-    console.error('Error in handleVideoCommand:', error);
+    console.error('Error in video generation queue:', error);
     await ctx.reply(
       `❌ Generation Failed:\n${error.message || error}\n\nPlease try again or verify prompt parameters.`
     );
@@ -76,6 +113,5 @@ To generate an instant video, provide your prompt:
 }
 
 export async function handleVideoGenerationAction(ctx) {
-  // Fallback for button clicks from /start
   return handleVideoCommand(ctx);
 }

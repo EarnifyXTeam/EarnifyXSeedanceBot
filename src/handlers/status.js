@@ -1,19 +1,26 @@
 import { HiggsfieldService } from '../services/higgsfieldService.js';
+import { QueueService } from '../services/queueService.js';
+import { UserService } from '../services/userService.js';
 
 export async function handleStatusCommand(ctx) {
   try {
     const balanceResponse = await HiggsfieldService.checkBalance();
     const text = HiggsfieldService.getResponseText(balanceResponse);
+    const qStatus = QueueService.getStatus();
+    const totalUsers = UserService.getTotalUsers();
 
     const message = `
-📊 **Higgsfield & Bot Status**
+📊 **EarnifyX System Status**
 
-• **Bot:** Online & Connected 🟢
-• **Higgsfield MCP Engine:** Active ⚡
-• **Account Details:**
-${text || 'Plan: Ultra (Active Unlimited Generations)'}
+• **Bot Engine:** Online & Polling 🟢
+• **Active GPU Jobs:** ${qStatus.active} / ${qStatus.max} parallel slots
+• **Tasks in Queue:** ${qStatus.queued} waiting
+• **Registered Members:** ${totalUsers} creators
 
-🚀 **Engine:** Seedance 2.5 / Nano Banana / Flux
+• **Higgsfield Ultra Plan:**
+${text || 'Plan: Ultra 3K (Active Unlimited Generations)'}
+
+🚀 **Engine:** Seedance 2.5 (Default: 9:16 Reels)
 👥 **Community:** earnifyXAutomation
     `.trim();
 
