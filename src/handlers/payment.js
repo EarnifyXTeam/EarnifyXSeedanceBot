@@ -115,7 +115,7 @@ export async function handleVerifyPayment(ctx, merchantTradeNo) {
 
   if (queryResult.status === 'PAID') {
     // Activate Credits or VIP
-    if (order.amount === '1.00') {
+    if (order.planName?.includes('VIP') || order.amount === '0.50' || order.amount === '1.00') {
       UserService.setVip(order.userId, true);
     } else {
       UserService.addCredits(order.userId, order.credits || 5);

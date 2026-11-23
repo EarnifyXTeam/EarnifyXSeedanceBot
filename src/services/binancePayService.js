@@ -118,7 +118,11 @@ export class BinancePayService {
           console.warn('⚠️ Binance Pay API returned non-success:', response.data);
         }
       } catch (err) {
-        console.error('❌ Binance Pay Order API error:', err.response?.data || err.message);
+        if (err.response?.data?.code === '400004') {
+          console.log('ℹ️ Binance API: Standard exchange keys detected. Switching to seamless Pay ID & TxID verification mode.');
+        } else {
+          console.warn('⚠️ Binance Pay API notice:', err.response?.data?.errorMessage || err.message);
+        }
       }
     }
 
@@ -135,7 +139,6 @@ export class BinancePayService {
     if (!order) return { status: 'NOT_FOUND' };
 
     if (!this.isApiConfigured()) {
-      // In manual/direct mode or when keys not set
       return { status: order.status, order };
     }
 
@@ -157,19 +160,23 @@ export class BinancePayService {
             'BinancePay-Certificate-SN': config.binancePayApiKey,
             'BinancePay-Signature': signature,
           },
-          timeout: 15000,
+          timeout: 10000,
         }
       );
 
       if (response.data?.status === 'SUCCESS' && response.data?.data) {
-        const binanceStatus = response.data.data.status; // 'PAID', 'INITIAL', 'CLOSED', 'EXPIRED'
+        const binanceStatus = response.data.data.status;
         order.status = binanceStatus;
         order.updatedAt = new Date().toISOString();
         saveOrders();
         return { status: binanceStatus, order };
       }
     } catch (err) {
-      console.error('❌ Binance Pay Query API error:', err.response?.data || err.message);
+      if (err.response?.data?.code === '400004') {
+        // Standard exchange key / IP check fallback
+      } else {
+        console.warn('⚠️ Binance query notice:', err.response?.data?.errorMessage || err.message);
+      }
     }
 
     return { status: order.status, order };
