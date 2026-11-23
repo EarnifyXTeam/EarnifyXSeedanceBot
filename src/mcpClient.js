@@ -58,16 +58,24 @@ class HiggsfieldMCPClient {
     return this.connectingPromise;
   }
 
-  async callTool(name, args = {}) {
+  async callTool(name, args = {}, timeoutMs = 300000) {
     await this.connect();
     try {
-      const response = await this.client.callTool({
-        name,
-        arguments: args,
-      });
+      // 5-minute timeout budget to allow long-running GPU queries
+      const response = await this.client.callTool(
+        {
+          name,
+          arguments: args,
+        },
+        undefined,
+        { timeout: timeoutMs }
+      );
       return response;
     } catch (error) {
-      console.error(`❌ Error calling tool ${name}:`, error);
+      // Only log if not an intentional snapshot poll
+      if (!name.includes('jobs_wait') && !name.includes('show_generations')) {
+        console.error(`❌ Error calling tool ${name}:`, error.message);
+      }
       throw error;
     }
   }

@@ -68,7 +68,7 @@ export class HiggsfieldService {
    */
   static async getVideoUrlFromGenerations(jobId) {
     try {
-      const res = await mcpClient.callTool('show_generations', {});
+      const res = await mcpClient.callTool('show_generations', {}, 15000);
       const text = this.getResponseText(res);
       const lines = text.split('\n');
 
@@ -88,59 +88,64 @@ export class HiggsfieldService {
       }
     } catch (e) {
       if (e.message?.includes('status: failed')) throw e;
-      console.warn(`Note during show_generations check for ${jobId}:`, e.message);
+      // non-fatal
     }
     return null;
   }
 
   /**
-   * Long-poll until job completes and returns video URL
+   * Fast snapshot polling until job completes and returns video URL
    */
   static async waitForJob(jobId, maxWaitSeconds = 420) {
     const startTime = Date.now();
-    console.log(`⏳ Starting polling for Job ID: ${jobId} (Budget: ${maxWaitSeconds}s)`);
+    console.log(`⏳ Starting fast-snapshot polling for Job ID: ${jobId} (Budget: ${maxWaitSeconds}s)`);
 
     while ((Date.now() - startTime) / 1000 < maxWaitSeconds) {
       try {
-        // Method 1: Check show_generations (Most reliable direct CloudFront CDN URL source)
+        // Fast Check 1: show_generations (instant CDN URL)
         const directUrl = await this.getVideoUrlFromGenerations(jobId);
         if (directUrl) {
-          console.log(`🎉 Job ${jobId} COMPLETED via show_generations! URL: ${directUrl}`);
+          console.log(`🎉 Job ${jobId} COMPLETED! CDN URL: ${directUrl}`);
           return directUrl;
         }
 
-        // Method 2: Fallback to jobs_wait
-        const response = await mcpClient.callTool('jobs_wait', {
-          jobs: [{ index: 0, job_id: jobId }],
-          timeout_seconds: 10,
-        });
+        // Fast Check 2: jobs_wait with timeout_seconds: 0 (immediate snapshot without blocking!)
+        try {
+          const response = await mcpClient.callTool(
+            'jobs_wait',
+            {
+              jobs: [{ index: 0, job_id: jobId }],
+              timeout_seconds: 0, // Instant snapshot, never hangs
+            },
+            15000
+          );
 
-        const urls = this.extractUrls(response);
-        const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
-        if (videoUrl) {
-          console.log(`🎉 Job ${jobId} completed via jobs_wait! Video URL: ${videoUrl}`);
-          return videoUrl;
+          const urls = this.extractUrls(response);
+          const videoUrl = urls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
+          if (videoUrl) {
+            console.log(`🎉 Job ${jobId} completed via jobs_wait! Video URL: ${videoUrl}`);
+            return videoUrl;
+          }
+
+          const text = this.getResponseText(response);
+          if (
+            text.includes(',failed,') ||
+            text.includes('status: failed') ||
+            (text.includes('failed:') && !text.includes('failed: 0'))
+          ) {
+            throw new Error('Video rendering failed on Higgsfield server.');
+          }
+        } catch (waitErr) {
+          // ignore snapshot timeout, show_generations is the primary source
         }
 
-        const text = this.getResponseText(response);
-        console.log(`[Job ${jobId} status snapshot]:`, text.split('\n')[0] || text.slice(0, 100));
-
-        if (
-          text.includes(',failed,') ||
-          text.includes('status: failed') ||
-          (text.includes('failed:') && !text.includes('failed: 0'))
-        ) {
-          throw new Error('Video rendering failed on Higgsfield server.');
-        }
-
-        // Wait 4-5 seconds between poll cycles
-        await new Promise((resolve) => setTimeout(resolve, 4000));
+        // Wait 6 seconds before next snapshot
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       } catch (err) {
         if (err.message?.includes('failed on Higgsfield') || err.message?.includes('status: failed')) {
           throw err;
         }
-        console.warn(`Polling note for ${jobId}: ${err.message}`);
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 6000));
       }
     }
 
@@ -154,13 +159,9 @@ export class HiggsfieldService {
 
   /**
    * Generate video using Seedance 2.5 with Dynamic Duration (up to 30s)
-   * @param {string} prompt - Prompt describing the video
-   * @param {string} aspectRatio - "16:9" or "9:16"
-   * @param {number} customDuration - Duration in seconds (4-30)
    */
   static async generateVideo(prompt, aspectRatio = '9:16', customDuration = null) {
     try {
-      // Auto-detect duration from prompt (e.g. "30 seconds", "30s", "10 sec")
       let duration = customDuration;
       if (!duration) {
         const durationMatch = prompt.match(/\b([4-9]|[12][0-9]|30)\s*(seconds?|secs?|s)\b/i);
@@ -169,11 +170,10 @@ export class HiggsfieldService {
         } else if (prompt.includes('30 second') || prompt.includes('30s')) {
           duration = 30;
         } else {
-          duration = 5; // Default if not mentioned
+          duration = 5;
         }
       }
 
-      // Clamp duration between min: 4 and max: 30
       duration = Math.max(4, Math.min(30, duration));
 
       console.log(`🎬 Submitting Seedance 2.5 Video Generation: "${prompt.slice(0, 70)}..." [${aspectRatio}] [${duration}s]`);
@@ -182,34 +182,35 @@ export class HiggsfieldService {
         model: config.defaultVideoModel,
         prompt: prompt,
         aspect_ratio: aspectRatio,
-        duration: duration, // Passed explicitly! (Supports 4 to 30 seconds)
-        generate_audio: true, // Native AI audio generation
-        use_unlim: true, // Ultra 3K free trial unlimited allowance
+        duration: duration,
+        generate_audio: true,
+        use_unlim: true,
       };
 
-      const response = await mcpClient.callTool('generate_video', {
-        params,
-        context: 'Telegram user video generation request via EarnifyXSeedanceBot',
-      });
+      const response = await mcpClient.callTool(
+        'generate_video',
+        {
+          params,
+          context: 'Telegram user video generation request via EarnifyXSeedanceBot',
+        },
+        180000
+      );
 
       const responseText = this.getResponseText(response);
       console.log('Video generation submission response:', responseText.slice(0, 200));
 
-      // Check if URL is immediately returned
       const immediateUrls = this.extractUrls(response);
       const immediateVideo = immediateUrls.find((u) => u.match(/\.(mp4|webm)(\?.*)?$/i));
       if (immediateVideo) {
         return { videoUrl: immediateVideo, text: responseText, duration };
       }
 
-      // Check for UUID job ID in response text
       const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
       const match = responseText.match(uuidRegex);
 
       if (match) {
         const jobId = match[0];
         console.log(`📌 Found Job ID: ${jobId}. Now waiting for render to finish...`);
-        // Adjust timeout based on duration (30s videos need up to 420s)
         const timeoutSeconds = duration > 10 ? 420 : 240;
         const polledVideoUrl = await this.waitForJob(jobId, timeoutSeconds);
         return { videoUrl: polledVideoUrl, jobId, text: responseText, duration };
@@ -236,10 +237,14 @@ export class HiggsfieldService {
         use_unlim: true,
       };
 
-      const response = await mcpClient.callTool('generate_image', {
-        params,
-        context: 'Telegram user image generation request via EarnifyXSeedanceBot',
-      });
+      const response = await mcpClient.callTool(
+        'generate_image',
+        {
+          params,
+          context: 'Telegram user image generation request via EarnifyXSeedanceBot',
+        },
+        120000
+      );
 
       const responseText = this.getResponseText(response);
       const immediateUrls = this.extractUrls(response);
@@ -270,7 +275,7 @@ export class HiggsfieldService {
     try {
       console.log(`🎙️ Submitting Voice Generation: "${text.slice(0, 80)}..."`);
       const params = { prompt: text };
-      const response = await mcpClient.callTool('generate_audio', { params });
+      const response = await mcpClient.callTool('generate_audio', { params }, 120000);
       return response;
     } catch (error) {
       console.error('Error in generateAudio:', error);
