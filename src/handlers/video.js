@@ -2,9 +2,12 @@ import { HiggsfieldService } from '../services/higgsfieldService.js';
 import { config } from '../config.js';
 import { UserService } from '../services/userService.js';
 import { QueueService } from '../services/queueService.js';
+import { HistoryService } from '../services/historyService.js';
 
 export async function handleVideoCommand(ctx) {
   const userId = ctx.from?.id;
+  const username = ctx.from?.username;
+  const firstName = ctx.from?.first_name;
   const prompt = ctx.match?.trim();
 
   if (!prompt) {
@@ -90,6 +93,17 @@ To generate an instant video, provide your prompt:
       taskFn: async () => {
         const result = await HiggsfieldService.generateVideo(prompt, aspectRatio);
         UserService.recordGeneration(userId);
+
+        // Record into history database
+        HistoryService.logCreation({
+          userId,
+          username,
+          firstName,
+          prompt,
+          type: 'video',
+          ratio: aspectRatio,
+          url: result.videoUrl || '',
+        });
 
         if (result.videoUrl) {
           await ctx.replyWithVideo(result.videoUrl, {

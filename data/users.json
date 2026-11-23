@@ -35,8 +35,8 @@
     "firstName": "Suraj",
     "lastName": "Bhai 🇮🇳",
     "joinedAt": "2026-11-23T06:40:43.943Z",
-    "lastActive": "2026-11-23T07:03:57.706Z",
-    "totalGenerations": 0,
+    "lastActive": "2026-11-23T07:35:25.928Z",
+    "totalGenerations": 1,
     "isBanned": false
   },
   "7155205118": {
@@ -75,7 +75,7 @@
     "firstName": "Vijay",
     "lastName": "",
     "joinedAt": "2026-11-23T07:07:57.937Z",
-    "lastActive": "2026-11-23T07:08:39.200Z",
+    "lastActive": "2026-11-23T07:42:19.122Z",
     "totalGenerations": 1,
     "isBanned": false
   },
@@ -87,6 +87,16 @@
     "joinedAt": "2026-11-23T07:08:52.201Z",
     "lastActive": "2026-11-23T07:14:33.391Z",
     "totalGenerations": 1,
+    "isBanned": false
+  },
+  "5762086014": {
+    "id": "5762086014",
+    "username": "@maliknaveedkalyar",
+    "firstName": "Malik Naveed",
+    "lastName": "Kalyar",
+    "joinedAt": "2026-11-23T07:41:53.210Z",
+    "lastActive": "2026-11-23T07:42:26.392Z",
+    "totalGenerations": 0,
     "isBanned": false
   }
 }

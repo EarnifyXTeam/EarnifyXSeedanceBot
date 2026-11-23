@@ -6,6 +6,7 @@ import { handleImageCommand } from './handlers/image.js';
 import { handleAudioCommand } from './handlers/audio.js';
 import { handleStatusCommand } from './handlers/status.js';
 import { handleHelpCommand } from './handlers/help.js';
+import { handleMyVideos, handleRecentAudit } from './handlers/history.js';
 import { forceJoinMiddleware } from './middlewares/forceJoin.js';
 import { mcpClient } from './mcpClient.js';
 
@@ -39,6 +40,8 @@ bot.command('audio', handleAudioCommand);
 bot.command('status', handleStatusCommand);
 bot.command('balance', handleStatusCommand);
 bot.command('help', handleHelpCommand);
+bot.command('myvideos', handleMyVideos);
+bot.command('recent', handleRecentAudit);
 
 // Callback Queries (Buttons)
 bot.callbackQuery('btn_video_help', async (ctx) => {
