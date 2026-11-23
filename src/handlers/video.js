@@ -2,6 +2,20 @@ import { HiggsfieldService } from '../services/higgsfieldService.js';
 import { InlineKeyboard } from 'grammy';
 import { UserService } from '../services/userService.js';
 
+// In-memory store for pending video prompts (promptId -> prompt text)
+// Keeps callback_data tiny (< 20 bytes), avoiding Telegram's 64-byte BUTTON_DATA_INVALID limit!
+const pendingPrompts = new Map();
+
+// Auto-clean old pending prompts every 30 mins
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, data] of pendingPrompts.entries()) {
+    if (now - data.timestamp > 30 * 60 * 1000) {
+      pendingPrompts.delete(id);
+    }
+  }
+}, 10 * 60 * 1000);
+
 export async function handleVideoCommand(ctx) {
   const userId = ctx.from?.id;
   const prompt = ctx.match?.trim();
@@ -34,33 +48,48 @@ To generate a video, please provide a prompt:
     return ctx.reply(`⏱️ **Anti-Flood Cooldown:** Kripya ${remaining} seconds wait karein naya request bhejne se pehle.`);
   }
 
-  // Ask for Aspect Ratio
+  // Generate a short 8-char prompt ID
+  const promptId = Math.random().toString(36).substring(2, 10);
+  pendingPrompts.set(promptId, {
+    prompt,
+    userId,
+    timestamp: Date.now(),
+  });
+
+  // Short callback_data: ~18 bytes total
   const keyboard = new InlineKeyboard()
-    .text('📱 9:16 (Reels / Shorts)', `gen_vid:9_16:${encodeURIComponent(prompt.slice(0, 50))}`)
-    .text('🖥️ 16:9 (Cinema / YouTube)', `gen_vid:16_9:${encodeURIComponent(prompt.slice(0, 50))}`);
+    .text('📱 9:16 (Reels / Shorts)', `gen_vid:9_16:${promptId}`)
+    .text('🖥️ 16:9 (Cinema / YouTube)', `gen_vid:16_9:${promptId}`);
+
+  const previewPrompt = prompt.length > 300 ? prompt.slice(0, 300) + '...' : prompt;
 
   await ctx.reply(
-    `⏳ **Prompt Received:**\n"${prompt}"\n\nChoose aspect ratio to start generation:`,
+    `⏳ **Prompt Received:**\n"${previewPrompt}"\n\nChoose aspect ratio to start generation:`,
     {
-      parse_mode: 'Markdown',
       reply_markup: keyboard,
     }
   );
 }
 
-export async function handleVideoGenerationAction(ctx, aspectRatio = '16:9', customPrompt = null) {
+export async function handleVideoGenerationAction(ctx) {
   const userId = ctx.from?.id;
-  let prompt = customPrompt;
 
-  if (!prompt && ctx.match) {
-    const parts = ctx.match[0].split(':');
-    aspectRatio = parts[1].replace('_', ':');
-    prompt = decodeURIComponent(parts[2]);
-  }
+  const data = ctx.callbackQuery?.data; // e.g. gen_vid:9_16:a1b2c3d4
+  if (!data) return;
+
+  const parts = data.split(':');
+  const aspectRatio = (parts[1] || '16_9').replace('_', ':');
+  const promptId = parts[2];
+
+  const pending = pendingPrompts.get(promptId);
+  const prompt = pending?.prompt;
 
   if (!prompt) {
-    return ctx.reply('⚠️ Prompt missing. Please try again with `/video <prompt>`.');
+    return ctx.reply('⚠️ Prompt expired or not found. Please send your prompt again with `/video <prompt>`.');
   }
+
+  // Clean up
+  pendingPrompts.delete(promptId);
 
   if (UserService.isGenerating(userId)) {
     return ctx.reply('⏳ **Ek video generation pehle se progress me hai!** Kripya wait karein.');
@@ -68,10 +97,17 @@ export async function handleVideoGenerationAction(ctx, aspectRatio = '16:9', cus
 
   UserService.startGenerating(userId);
 
-  await ctx.reply(
-    `🚀 **Generating with Seedance 2.5...**\n\n📝 **Prompt:** "${prompt}"\n📐 **Aspect Ratio:** ${aspectRatio}\n\n⏳ *AI video rendering takes ~30-90 seconds. Please wait...*`,
-    { parse_mode: 'Markdown' }
-  );
+  try {
+    await ctx.editMessageText(
+      `🚀 **Generating with Seedance 2.5...**\n\n📝 **Prompt:** "${prompt.slice(0, 250)}..."\n📐 **Aspect Ratio:** ${aspectRatio}\n\n⏳ *AI video rendering takes ~30-90 seconds. Please wait...*`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    await ctx.reply(
+      `🚀 **Generating with Seedance 2.5...**\n\n📝 **Prompt:** "${prompt.slice(0, 250)}..."\n📐 **Aspect Ratio:** ${aspectRatio}\n\n⏳ *AI video rendering takes ~30-90 seconds. Please wait...*`,
+      { parse_mode: 'Markdown' }
+    );
+  }
 
   try {
     const response = await HiggsfieldService.generateVideo(prompt, aspectRatio);
@@ -84,7 +120,7 @@ export async function handleVideoGenerationAction(ctx, aspectRatio = '16:9', cus
 
     if (videoUrl) {
       await ctx.replyWithVideo(videoUrl, {
-        caption: `🎬 **Generated with Seedance 2.5**\n\nPrompt: "${prompt}"\nRatio: ${aspectRatio}\n\n⚡ *Powered by earnifyXAutomation*`,
+        caption: `🎬 **Generated with Seedance 2.5**\n\nRatio: ${aspectRatio}\n\n⚡ *Powered by earnifyXAutomation*`,
         parse_mode: 'Markdown',
       });
     } else {
@@ -96,7 +132,7 @@ export async function handleVideoGenerationAction(ctx, aspectRatio = '16:9', cus
   } catch (error) {
     console.error('Error in handleVideoGenerationAction:', error);
     await ctx.reply(
-      `❌ **Generation Failed:**\n\`${error.message || error}\`\n\nPlease verify your Higgsfield session or try a different prompt.`
+      `❌ **Generation Failed:**\n\`${error.message || error}\`\n\nPlease try again or verify prompt parameters.`
     );
   } finally {
     UserService.stopGenerating(userId);
