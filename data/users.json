@@ -29,6 +29,16 @@
     "totalGenerations": 1,
     "isBanned": false
   },
+  "1083867078": {
+    "id": "1083867078",
+    "username": "@KingFaizii",
+    "firstName": "King",
+    "lastName": "Faizii",
+    "joinedAt": "2026-11-23T09:42:59.441Z",
+    "lastActive": "2026-11-23T09:55:44.829Z",
+    "totalGenerations": 3,
+    "isBanned": false
+  },
   "1237548133": {
     "id": "1237548133",
     "username": "",
@@ -65,8 +75,8 @@
     "firstName": "Suraj",
     "lastName": "Bhai 🇮🇳",
     "joinedAt": "2026-11-23T06:40:43.943Z",
-    "lastActive": "2026-11-23T07:57:25.587Z",
-    "totalGenerations": 1,
+    "lastActive": "2026-11-23T09:05:56.349Z",
+    "totalGenerations": 2,
     "isBanned": false
   },
   "7155205118": {
@@ -75,7 +85,7 @@
     "firstName": "Jatinnn",
     "lastName": "",
     "joinedAt": "2026-11-23T06:52:14.006Z",
-    "lastActive": "2026-11-23T08:03:50.074Z",
+    "lastActive": "2026-11-23T09:23:51.054Z",
     "totalGenerations": 3,
     "isBanned": false
   },
@@ -85,7 +95,7 @@
     "firstName": "Vittu",
     "lastName": "Jaiswal",
     "joinedAt": "2026-11-23T06:52:36.741Z",
-    "lastActive": "2026-11-23T07:52:43.154Z",
+    "lastActive": "2026-11-23T09:30:30.245Z",
     "totalGenerations": 2,
     "isBanned": false
   },
@@ -135,8 +145,38 @@
     "firstName": "Azhar 🍅🌱SEED▪️🐾",
     "lastName": "Fazeel",
     "joinedAt": "2026-11-23T08:14:13.461Z",
-    "lastActive": "2026-11-23T08:20:25.950Z",
-    "totalGenerations": 1,
+    "lastActive": "2026-11-23T08:14:16.389Z",
+    "totalGenerations": 0,
+    "isBanned": false
+  },
+  "6699391816": {
+    "id": "6699391816",
+    "username": "@aabhiiishekkk",
+    "firstName": "𝐀",
+    "lastName": "",
+    "joinedAt": "2026-11-23T08:23:15.324Z",
+    "lastActive": "2026-11-23T10:22:39.452Z",
+    "totalGenerations": 2,
+    "isBanned": false
+  },
+  "7899963545": {
+    "id": "7899963545",
+    "username": "",
+    "firstName": "Ritesh🌱SEED🦉",
+    "lastName": "",
+    "joinedAt": "2026-11-23T08:29:31.238Z",
+    "lastActive": "2026-11-23T10:22:40.305Z",
+    "totalGenerations": 2,
+    "isBanned": false
+  },
+  "6369717226": {
+    "id": "6369717226",
+    "username": "",
+    "firstName": "Young",
+    "lastName": "",
+    "joinedAt": "2026-11-23T10:14:25.375Z",
+    "lastActive": "2026-11-23T10:14:25.375Z",
+    "totalGenerations": 0,
     "isBanned": false
   }
 }

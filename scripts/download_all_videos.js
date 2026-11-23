@@ -3,7 +3,8 @@ import path from 'path';
 import axios from 'axios';
 import { mcpClient } from '../src/mcpClient.js';
 
-const DOWNLOAD_DIR = path.resolve('downloads', 'videos');
+const VIDEO_DIR = path.resolve('downloads', 'videos');
+const PROMPT_DIR = path.resolve('downloads', 'prompts');
 
 async function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
@@ -30,7 +31,8 @@ async function downloadFile(url, destPath) {
 
 async function main() {
   console.log('🚀 Fetching all Higgsfield generations to save locally...');
-  await ensureDir(DOWNLOAD_DIR);
+  await ensureDir(VIDEO_DIR);
+  await ensureDir(PROMPT_DIR);
 
   // 1. Fetch generations list from MCP
   const res = await mcpClient.callTool('show_generations', {}, 30000);
@@ -105,8 +107,8 @@ async function main() {
 
     const videoFileName = `${indexNum}_${cleanId}.mp4`;
     const promptFileName = `${indexNum}_${cleanId}_prompt.txt`;
-    const videoFilePath = path.join(DOWNLOAD_DIR, videoFileName);
-    const promptFilePath = path.join(DOWNLOAD_DIR, promptFileName);
+    const videoFilePath = path.join(VIDEO_DIR, videoFileName);
+    const promptFilePath = path.join(PROMPT_DIR, promptFileName);
 
     // Write Prompt File
     const promptContent = `========================================================
@@ -163,10 +165,10 @@ ${promptText}
     readme += `| ${s.index} | **\`${s.videoFile}\`** | ${s.duration} | ${s.aspectRatio} | ${shortPrompt.replace(/\n/g, ' ')} | [Download CDN](${s.url}) |\n`;
   }
 
-  fs.writeFileSync(path.join(DOWNLOAD_DIR, 'README.md'), readme, 'utf-8');
+  fs.writeFileSync(path.join(path.resolve('downloads'), 'README.md'), readme, 'utf-8');
 
-  console.log(`\n🎉 All ${summaryList.length} videos downloaded and saved into:\n📁 ${DOWNLOAD_DIR}`);
-  console.log(`📄 Check ${path.join(DOWNLOAD_DIR, 'README.md')} for the complete catalog!`);
+  console.log(`\n🎉 All ${summaryList.length} videos downloaded and saved into:\n📁 ${VIDEO_DIR}\n📝 Prompts in: ${PROMPT_DIR}`);
+  console.log(`📄 Check ${path.join(path.resolve('downloads'), 'README.md')} for the complete catalog!`);
   process.exit(0);
 }
 

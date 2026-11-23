@@ -4,13 +4,17 @@ import axios from 'axios';
 
 const DATA_DIR = path.resolve('data');
 const CREATIONS_FILE = path.join(DATA_DIR, 'creations.json');
-const DOWNLOAD_DIR = path.resolve('downloads', 'videos');
+const VIDEO_DIR = path.resolve('downloads', 'videos');
+const PROMPT_DIR = path.resolve('downloads', 'prompts');
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-if (!fs.existsSync(DOWNLOAD_DIR)) {
-  fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
+if (!fs.existsSync(VIDEO_DIR)) {
+  fs.mkdirSync(VIDEO_DIR, { recursive: true });
+}
+if (!fs.existsSync(PROMPT_DIR)) {
+  fs.mkdirSync(PROMPT_DIR, { recursive: true });
 }
 
 let creations = [];
@@ -49,8 +53,8 @@ async function autoSaveLocally(record, duration = '5s') {
     const mediaFileName = `${timestamp}_${safeUser}_${cleanId}.${ext}`;
     const promptFileName = `${timestamp}_${safeUser}_${cleanId}_prompt.txt`;
 
-    const mediaPath = path.join(DOWNLOAD_DIR, mediaFileName);
-    const promptPath = path.join(DOWNLOAD_DIR, promptFileName);
+    const mediaPath = path.join(VIDEO_DIR, mediaFileName);
+    const promptPath = path.join(PROMPT_DIR, promptFileName);
 
     // Save prompt txt
     const promptContent = `========================================================
