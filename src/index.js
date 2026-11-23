@@ -175,9 +175,22 @@ async function main() {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('EarnifyX Seedance Bot is Running 🚀');
   });
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`🌐 Healthcheck HTTP server listening on port ${PORT}`);
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`ℹ️ Port ${PORT} is managed by cloud reverse proxy. Telegram Bot continues running uninterrupted!`);
+    } else {
+      console.warn(`⚠️ Healthcheck server warning: ${err.message}`);
+    }
   });
+
+  try {
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🌐 Healthcheck HTTP server listening on port ${PORT}`);
+    });
+  } catch (listenErr) {
+    console.warn('⚠️ Server listen caught:', listenErr.message);
+  }
 }
 
 // Graceful shutdown
