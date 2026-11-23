@@ -31,8 +31,8 @@ class HiggsfieldMCPClient {
 
         this.client = new Client(
           {
-            name: 'earnifyx-seedance-telegram-bot',
-            version: '1.0.0',
+            name: 'Claude Desktop',
+            version: '0.7.0',
           },
           {
             capabilities: {
