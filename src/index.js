@@ -11,6 +11,7 @@ import { handleMyVideos, handleRecentAudit } from './handlers/history.js';
 import { sendPaymentInvoice, handleBuyPlan, handleVerifyPayment, handleManualPaySubmit, handleAdminApproval } from './handlers/payment.js';
 import { BinancePayService } from './services/binancePayService.js';
 import { UserService } from './services/userService.js';
+import { ActivityService } from './services/activityService.js';
 import { forceJoinMiddleware } from './middlewares/forceJoin.js';
 import { mcpClient } from './mcpClient.js';
 
@@ -49,6 +50,9 @@ bot.command('recent', handleRecentAudit);
 bot.command('buy', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
 bot.command('plans', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
 bot.command('pay', handleManualPaySubmit);
+bot.command(['proof', 'community', 'live'], (ctx) => {
+  return ctx.reply(ActivityService.getSocialProofMessage(), { parse_mode: 'HTML' });
+});
 
 // Admin commands to manage credits manually if needed
 bot.command('addcredits', async (ctx) => {
@@ -108,6 +112,11 @@ bot.callbackQuery('btn_image_help', async (ctx) => {
 bot.callbackQuery('btn_status', async (ctx) => {
   try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleStatusCommand(ctx);
+});
+
+bot.callbackQuery('btn_live_proof', async (ctx) => {
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
+  return ctx.reply(ActivityService.getSocialProofMessage(), { parse_mode: 'HTML' });
 });
 
 bot.callbackQuery('btn_help', async (ctx) => {

@@ -46,8 +46,10 @@ export class UserService {
 
     const id = from.id.toString();
     const now = new Date().toISOString();
+    let isNew = false;
 
     if (!users[id]) {
+      isNew = true;
       users[id] = {
         id,
         username: from.username ? `@${from.username}` : '',
@@ -67,7 +69,7 @@ export class UserService {
     }
 
     saveUsers();
-    return users[id];
+    return { ...users[id], isNew };
   }
 
   static isBanned(userId) {

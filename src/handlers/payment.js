@@ -1,6 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import { BinancePayService } from '../services/binancePayService.js';
 import { UserService } from '../services/userService.js';
+import { ActivityService } from '../services/activityService.js';
 import { config } from '../config.js';
 
 /**
@@ -38,7 +39,7 @@ Binance Pay se instant auto-verification hota hai. Niche button dabakar pay kare
 export async function handleBuyPlan(ctx, planType) {
   try {
     await ctx.answerCallbackQuery();
-  } catch (e) {}
+  } catch (e) { }
 
   const userId = ctx.from?.id;
   const username = ctx.from?.username ? `@${ctx.from.username}` : (ctx.from?.first_name || 'User');
@@ -98,7 +99,7 @@ export async function handleBuyPlan(ctx, planType) {
 export async function handleVerifyPayment(ctx, merchantTradeNo) {
   try {
     await ctx.answerCallbackQuery('Checking Binance Payment...');
-  } catch (e) {}
+  } catch (e) { }
 
   const order = BinancePayService.getOrder(merchantTradeNo);
   if (!order) {
@@ -140,7 +141,7 @@ export async function handleVerifyPayment(ctx, merchantTradeNo) {
           `Order: <code>${merchantTradeNo}</code>`,
           { parse_mode: 'HTML' }
         );
-      } catch (e) {}
+      } catch (e) { }
     }
     return;
   }
@@ -214,7 +215,7 @@ export async function handleManualPaySubmit(ctx) {
 export async function handleAdminApproval(ctx) {
   const adminId = ctx.from?.id?.toString();
   if (adminId !== (config.adminId || '').toString()) {
-    try { await ctx.answerCallbackQuery('Unauthorized action'); } catch (e) {}
+    try { await ctx.answerCallbackQuery('Unauthorized action'); } catch (e) { }
     return;
   }
 
@@ -223,7 +224,7 @@ export async function handleAdminApproval(ctx) {
   if (data.startsWith('adm_appr_5_')) {
     const targetUserId = data.replace('adm_appr_5_', '');
     UserService.addCredits(targetUserId, 5);
-    try { await ctx.answerCallbackQuery('Approved 5 Credits!'); } catch (e) {}
+    try { await ctx.answerCallbackQuery('Approved 5 Credits!'); } catch (e) { }
     await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n✅ <b>APPROVED: Added 5 Video Credits ($0.50)!</b>`, { parse_mode: 'HTML' });
     try {
       await ctx.api.sendMessage(
@@ -231,11 +232,17 @@ export async function handleAdminApproval(ctx) {
         `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>5 Video Credits ($0.50)</b> add ho chuke hain. Ab aap seedhe prompt bhej kar video generate kar sakte hain! 🚀`,
         { parse_mode: 'HTML' }
       );
-    } catch (e) {}
+    } catch (e) { }
   } else if (data.startsWith('adm_appr_vip_')) {
     const targetUserId = data.replace('adm_appr_vip_', '');
     UserService.setVip(targetUserId, true);
-    try { await ctx.answerCallbackQuery('Approved VIP Unlimited!'); } catch (e) {}
+    const targetUser = UserService.getUser(targetUserId);
+    ActivityService.recordVipActivation({
+      userId: targetUserId,
+      username: targetUser?.username,
+      firstName: targetUser?.firstName,
+    });
+    try { await ctx.answerCallbackQuery('Approved VIP Unlimited!'); } catch (e) { }
     await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n💎 <b>APPROVED: Activated Unlimited VIP Access ($1.00)!</b>`, { parse_mode: 'HTML' });
     try {
       await ctx.api.sendMessage(
@@ -243,10 +250,10 @@ export async function handleAdminApproval(ctx) {
         `🎉 <b>Payment Approved!</b>\n\nAapke account me <b>Unlimited VIP Access ($1.00)</b> activate ho chuka hai! Enjoy unlimited video generations. 🚀`,
         { parse_mode: 'HTML' }
       );
-    } catch (e) {}
+    } catch (e) { }
   } else if (data.startsWith('adm_reject_')) {
     const targetUserId = data.replace('adm_reject_', '');
-    try { await ctx.answerCallbackQuery('Payment Rejected'); } catch (e) {}
+    try { await ctx.answerCallbackQuery('Payment Rejected'); } catch (e) { }
     await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n❌ <b>REJECTED: Payment was not approved.</b>`, { parse_mode: 'HTML' });
     try {
       await ctx.api.sendMessage(
@@ -254,6 +261,6 @@ export async function handleAdminApproval(ctx) {
         `❌ <b>Payment Not Approved:</b>\n\nAapka diya gaya Transaction ID verify nahi ho saka. Kripya sahi Binance Order ID ke sath dobara try karein ya support se sampark karein.`,
         { parse_mode: 'HTML' }
       );
-    } catch (e) {}
+    } catch (e) { }
   }
 }

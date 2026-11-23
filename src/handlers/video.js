@@ -4,6 +4,7 @@ import { UserService } from '../services/userService.js';
 import { QueueService } from '../services/queueService.js';
 import { HistoryService } from '../services/historyService.js';
 import { sendPaymentInvoice } from './payment.js';
+import { ActivityService } from '../services/activityService.js';
 
 function makeProgressBar(percent, length = 10) {
   const p = Math.max(0, Math.min(100, Math.round(percent)));
@@ -181,6 +182,22 @@ To generate an instant video, provide your prompt:
           await ctx.replyWithVideo(result.videoUrl, {
             caption: `🎬 Generated with Seedance 2.5\n⏱️ Duration: ${result.duration || requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
           });
+
+          // Live Activity Tracking & Admin Alert
+          ActivityService.recordVideoDelivery({
+            userId,
+            username,
+            firstName,
+            duration: `${result.duration || requestedDuration}s`,
+            ratio: aspectRatio,
+          });
+          ActivityService.notifyAdmin(
+            ctx.api,
+            `🎬 <b>Video Delivered Successfully!</b>\n\n` +
+            `• <b>User:</b> ${firstName} (@${username || 'none'})\n` +
+            `• <b>Duration:</b> ${result.duration || requestedDuration}s | 📐 <b>Ratio:</b> ${aspectRatio}\n` +
+            `• <b>Prompt:</b> "${safePreview}"`
+          );
         } else if (result.jobId) {
           // Video is still rendering on Higgsfield GPU (queue / extended render)
           await ctx.reply(
@@ -198,6 +215,22 @@ To generate an instant video, provide your prompt:
                   caption: `🎬 <b>Aapka Video Ready Hai!</b> (Seedance 2.5)\n⏱️ Duration: ${requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
                   parse_mode: 'HTML',
                 });
+
+                // Live Activity Tracking & Admin Alert
+                ActivityService.recordVideoDelivery({
+                  userId,
+                  username,
+                  firstName,
+                  duration: `${requestedDuration}s`,
+                  ratio: aspectRatio,
+                });
+                ActivityService.notifyAdmin(
+                  ctx.api,
+                  `🎬 <b>Video Delivered Successfully (Background Render)!</b>\n\n` +
+                  `• <b>User:</b> ${firstName} (@${username || 'none'})\n` +
+                  `• <b>Duration:</b> ${requestedDuration}s | 📐 <b>Ratio:</b> ${aspectRatio}\n` +
+                  `• <b>Job ID:</b> <code>${result.jobId}</code>`
+                );
                 HistoryService.logCreation({
                   userId,
                   username,
