@@ -1,10 +1,11 @@
 import { InlineKeyboard } from 'grammy';
 import { config } from '../config.js';
 import { handleStart } from '../handlers/start.js';
+import { UserService } from '../services/userService.js';
 
 /**
  * Checks which required channels the user has NOT joined
- * Returns array of channels user needs to join
+ * Direct live verification from Telegram official servers (cannot be faked)
  */
 export async function getMissingChannels(ctx, userId) {
   if (!config.forceChannels || config.forceChannels.length === 0) return [];
@@ -21,9 +22,8 @@ export async function getMissingChannels(ctx, userId) {
       }
     } catch (error) {
       console.warn(
-        `⚠️ Force Join check warning for ${channel.name} (${channel.id}): ${error.message}. Ensure bot is Admin!`
+        `⚠️ Force Join check warning for ${channel.name} (${channel.id}): ${error.message}. Ensure bot is Admin in the channel!`
       );
-      // If error (e.g., bot not admin yet), don't block
     }
   }
 
@@ -31,11 +31,12 @@ export async function getMissingChannels(ctx, userId) {
 }
 
 /**
- * Force Channel Join Middleware supporting multiple channels
+ * Force Channel Join & Anti-Fake Security Middleware
  */
 export async function forceJoinMiddleware(ctx, next) {
-  if (!config.forceChannels || config.forceChannels.length === 0) {
-    return await next();
+  // Anti-Fake Rule 1: Reject any automated bot accounts
+  if (ctx.from?.is_bot) {
+    return; // Silently drop bots
   }
 
   const userId = ctx.from?.id;
@@ -43,13 +44,21 @@ export async function forceJoinMiddleware(ctx, next) {
     return await next();
   }
 
+  // Anti-Fake Rule 2: Block banned/malicious users
+  if (UserService.isBanned(userId)) {
+    return await ctx.reply('🚫 **Your account has been restricted from using this service due to policy violations.**');
+  }
+
   // Handle the verification button click
   if (ctx.callbackQuery?.data === 'verify_force_join') {
     const missing = await getMissingChannels(ctx, userId);
 
     if (missing.length === 0) {
+      // Register authentic user
+      UserService.registerUser(ctx.from);
+
       await ctx.answerCallbackQuery({
-        text: '🎉 Verification successful! Access unlocked!',
+        text: '🎉 Verified! Official membership confirmed!',
         show_alert: false,
       });
 
@@ -63,41 +72,42 @@ export async function forceJoinMiddleware(ctx, next) {
     } else {
       const missingNames = missing.map((ch) => ch.name).join(', ');
       return await ctx.answerCallbackQuery({
-        text: `⚠️ Aapne abhi join nahi kiya: ${missingNames}. Kripya dono channels join karein!`,
+        text: `❌ Fake click detected! Aapne abhi join nahi kiya: ${missingNames}. Kripya channels open karke JOIN button dabayein!`,
         show_alert: true,
       });
     }
   }
 
-  // Check membership for normal messages & commands
+  // Anti-Fake Rule 3: Continuous Live Check (If a user leaves the channel later, they are instantly locked!)
   const missing = await getMissingChannels(ctx, userId);
 
   if (missing.length > 0) {
     const keyboard = new InlineKeyboard();
 
-    // Add buttons for each channel
     for (const ch of config.forceChannels) {
       keyboard.url(`📢 Join ${ch.name}`, ch.link).row();
     }
     keyboard.text('✅ I Have Joined Both / Verify', 'verify_force_join');
 
     const lockMessage = `
-🔒 **Access Locked — Channels Join Required!**
+🔒 **Membership Verification Required!**
 
-To use **EarnifyXSeedanceBot** and generate unlimited AI videos with **Seedance 2.5**, you must join both of our official community channels:
+To prevent fake spam and protect our AI GPU resources, **EarnifyXSeedanceBot** requires real members to join our official channels:
 
 1️⃣ **EarnifyX Automation**
 2️⃣ **EarnifyX Community**
 
+⚠️ *Warning: If you leave the channels after joining, your access will be automatically revoked.*
+
 👉 **Step 1:** Click both join buttons below.
-👉 **Step 2:** Click **"✅ I Have Joined Both / Verify"** to instantly unlock all features!
+👉 **Step 2:** Click **"✅ I Have Joined Both / Verify"** to activate your access!
 
 ⚡ *Powered by earnifyXAutomation*
     `.trim();
 
     if (ctx.callbackQuery) {
       await ctx.answerCallbackQuery({
-        text: '🔒 Please join both channels first to unlock the bot!',
+        text: '🔒 Kripya dono channels join karein!',
         show_alert: true,
       });
     }
@@ -107,6 +117,9 @@ To use **EarnifyXSeedanceBot** and generate unlimited AI videos with **Seedance 
       reply_markup: keyboard,
     });
   }
+
+  // User is verified and legitimate, update activity
+  UserService.registerUser(ctx.from);
 
   return await next();
 }
