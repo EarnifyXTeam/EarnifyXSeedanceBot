@@ -200,16 +200,59 @@ To generate an instant video, provide your prompt:
           );
         } else if (result.jobId) {
           // Video is still rendering on Higgsfield GPU (queue / extended render)
-          await ctx.reply(
-            `⏳ <b>GPU Render in Progress!</b>\n\n📌 <b>Job ID:</b> <code>${result.jobId}</code>\n⏱️ <b>Duration:</b> ${requestedDuration} Seconds\n📐 <b>Ratio:</b> ${aspectRatio}\n\nSeedance 2.5 cluster par aapka video process ho raha hai. Jaise hi render finalize hoga, bot <b>isi chat me automatically video upload kar dega</b>! 🚀`,
-            { parse_mode: 'HTML' }
-          );
+          const waitTimeText = requestedDuration > 10 ? '~3-6 min' : '~45-90 sec';
+          const waitCard = `<b>⏳ GPU Render in Progress! (Seedance 2.5)</b>\n\n` +
+            `📝 <b>Prompt:</b> "${safePreview}"\n` +
+            `📐 <b>Ratio:</b> ${aspectRatio} | ⏱️ <b>Duration:</b> ${requestedDuration}s\n` +
+            `📌 <b>Job ID:</b> <code>${result.jobId.slice(0, 16)}...</code>\n\n` +
+            `<pre>${makeProgressBar(30, 10)}</pre>\n` +
+            `🔄 <b>Live Status:</b> 🎬 Rendering neural video frames & sound...\n` +
+            `⏱️ <b>Est. Time:</b> ${waitTimeText}\n\n` +
+            `<i>Jaise hi render complete hoga, video isi chat me upload ho jayega! 🚀</i>`;
 
-          // Background auto-delivery poller (waits up to 10 more minutes)
+          if (statusMessage) {
+            try {
+              await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, waitCard, { parse_mode: 'HTML' });
+            } catch (e) {}
+          } else {
+            statusMessage = await ctx.reply(waitCard, { parse_mode: 'HTML' });
+          }
+
+          // Background auto-delivery poller with continuous live progress bar updates
           (async () => {
             try {
               console.log(`🔄 Background delivery poller started for Job ID: ${result.jobId}`);
-              const bgUrl = await HiggsfieldService.waitForJob(result.jobId, 600);
+              let lastBgEdit = 0;
+              const bgUrl = await HiggsfieldService.waitForJob(
+                result.jobId,
+                720,
+                async ({ percent, stage, elapsedSec }) => {
+                  const now = Date.now();
+                  if (now - lastBgEdit < 4500 && percent < 100) return;
+                  lastBgEdit = now;
+
+                  try {
+                    const bar = makeProgressBar(percent, 10);
+                    const updateCard = `<b>🚀 Generating Seedance 2.5 Video... ⚡</b>\n\n` +
+                      `📝 <b>Prompt:</b> "${safePreview}"\n` +
+                      `📐 <b>Ratio:</b> ${aspectRatio} | ⏱️ <b>Duration:</b> ${requestedDuration}s\n` +
+                      `📌 <b>Job ID:</b> <code>${result.jobId.slice(0, 16)}...</code>\n\n` +
+                      `<pre>${bar}</pre>\n` +
+                      `🔄 <b>Live Status:</b> ${escapeHtml(stage)}\n` +
+                      `⏱️ <b>Time Elapsed:</b> ${elapsedSec || 0}s\n\n` +
+                      `⚡ <i>Powered by earnifyXAutomation</i>`;
+
+                    if (statusMessage) {
+                      await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, updateCard, {
+                        parse_mode: 'HTML',
+                      });
+                    }
+                  } catch (editErr) {
+                    // Ignore transient rate limits
+                  }
+                }
+              );
+
               if (bgUrl) {
                 await ctx.api.sendVideo(ctx.chat.id, bgUrl, {
                   caption: `🎬 <b>Aapka Video Ready Hai!</b> (Seedance 2.5)\n⏱️ Duration: ${requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
