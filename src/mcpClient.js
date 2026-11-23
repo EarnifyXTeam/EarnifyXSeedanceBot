@@ -57,6 +57,20 @@ class HiggsfieldMCPClient {
           args: ['-y', 'mcp-remote', config.higgsfieldMcpUrl],
         });
 
+        this.transport.onclose = () => {
+          console.warn('⚠️ Higgsfield MCP connection closed. Will reconnect on next request.');
+          this.isConnected = false;
+          this.client = null;
+          this.transport = null;
+        };
+
+        this.transport.onerror = (err) => {
+          console.warn('⚠️ Higgsfield MCP transport notice:', err?.message || err);
+          this.isConnected = false;
+          this.client = null;
+          this.transport = null;
+        };
+
         this.client = new Client(
           {
             name: 'Claude Desktop',
@@ -76,6 +90,7 @@ class HiggsfieldMCPClient {
       } catch (error) {
         this.isConnected = false;
         this.client = null;
+        this.transport = null;
         console.error('❌ Failed to connect to Higgsfield MCP:', error);
         throw error;
       } finally {
@@ -86,7 +101,7 @@ class HiggsfieldMCPClient {
     return this.connectingPromise;
   }
 
-  async callTool(name, args = {}, timeoutMs = 300000) {
+  async callTool(name, args = {}, timeoutMs = 300000, retryCount = 1) {
     await this.connect();
     try {
       // Explicit CallToolResultSchema ensures options.timeout (300s) is correctly recognized by Protocol
@@ -100,8 +115,31 @@ class HiggsfieldMCPClient {
       );
       return response;
     } catch (error) {
+      const isConnectionError =
+        !this.isConnected ||
+        !this.client ||
+        error.message?.includes('Not connected') ||
+        error.message?.includes('Connection closed') ||
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('broken pipe') ||
+        error.message?.includes('closed');
+
+      if (isConnectionError && retryCount > 0) {
+        console.warn(`🔄 MCP connection lost while calling ${name}. Auto-reconnecting and retrying...`);
+        this.isConnected = false;
+        this.client = null;
+        this.transport = null;
+        try {
+          await this.connect();
+          return await this.callTool(name, args, timeoutMs, retryCount - 1);
+        } catch (reconnectErr) {
+          console.error('❌ Failed to reconnect to Higgsfield MCP:', reconnectErr.message);
+          throw reconnectErr;
+        }
+      }
+
       // Suppress logging on background polling snapshots to keep terminal clean
-      if (!name.includes('show_generations') && !name.includes('jobs_wait')) {
+      if (!name.includes('show_generations') && !name.includes('jobs_wait') && !name.includes('show_generation_by_ids')) {
         console.error(`❌ Error calling tool ${name}:`, error.message);
       }
       throw error;
