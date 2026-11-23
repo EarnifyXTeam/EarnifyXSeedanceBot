@@ -1,3 +1,4 @@
+import { InlineKeyboard } from 'grammy';
 import { HiggsfieldService } from '../services/higgsfieldService.js';
 import { config } from '../config.js';
 import { UserService } from '../services/userService.js';
@@ -5,6 +6,9 @@ import { QueueService } from '../services/queueService.js';
 import { HistoryService } from '../services/historyService.js';
 import { sendPaymentInvoice } from './payment.js';
 import { ActivityService } from '../services/activityService.js';
+
+// In-memory active render tracker to support real-time user status refresh
+export const activeRenderJobs = new Map();
 
 function makeProgressBar(percent, length = 10) {
   const p = Math.max(0, Math.min(100, Math.round(percent)));
@@ -16,6 +20,10 @@ function makeProgressBar(percent, length = 10) {
 function escapeHtml(text) {
   if (!text) return '';
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function getRenderKeyboard(targetUserId) {
+  return new InlineKeyboard().text('🔄 Refresh Status', `refresh_render_${targetUserId}`);
 }
 
 export async function handleVideoCommand(ctx) {
@@ -33,25 +41,25 @@ export async function handleVideoCommand(ctx) {
 
   if (!prompt) {
     const usageMsg = `
-🎬 **Seedance 2.5 AI Video Generator (Default: 9:16 Reels/Shorts)**
+🎬 <b>Seedance 2.5 AI Video Generator (Default: 9:16 Reels/Shorts)</b>
 
 To generate an instant video, provide your prompt:
-👉 \`/video <your description>\`
+👉 <code>/video &lt;your description&gt;</code>
 
-**Examples:**
-• \`/video cinematic drone flythrough inside futuristic neon Tokyo, 4k 60fps\`
-• \`/video ultra realistic tiger walking through a mystical glowing jungle, 30 seconds\`
+<b>Examples:</b>
+• <code>/video cinematic drone flythrough inside futuristic neon Tokyo, 4k 60fps</code>
+• <code>/video ultra realistic tiger walking through a mystical glowing jungle, 30 seconds</code>
 
-💡 *Default aspect ratio is **9:16**.*
-💡 *Supports durations up to **30 seconds** (just mention "30 seconds" in your prompt)!*
+💡 <i>Default aspect ratio is <b>9:16</b>.</i>
+💡 <i>Supports durations up to <b>30 seconds</b> (just mention "30 seconds" in your prompt)!</i>
     `.trim();
 
-    return ctx.reply(usageMsg, { parse_mode: 'Markdown' });
+    return ctx.reply(usageMsg, { parse_mode: 'HTML' });
   }
 
   // Anti-Spam: Check if user already has an active task running
   if (UserService.isGenerating(userId)) {
-    return ctx.reply('⏳ **Aapka ek video pehle se render ya queue me hai!** Kripya pehle uske complete hone ka wait karein.');
+    return ctx.reply('⏳ <b>Aapka ek video pehle se render ya queue me hai!</b> Kripya pehle uske complete hone ka wait karein.', { parse_mode: 'HTML' });
   }
 
   // 1 Free Video Trial, then Binance Paywall Check
@@ -63,7 +71,7 @@ To generate an instant video, provide your prompt:
   // Anti-Flood: 15s Cooldown
   const remaining = UserService.checkCooldown(userId, 15);
   if (remaining > 0) {
-    return ctx.reply(`⏱️ **Anti-Flood Cooldown:** Kripya ${remaining} seconds wait karein naya request bhejne se pehle.`);
+    return ctx.reply(`⏱️ <b>Anti-Flood Cooldown:</b> Kripya ${remaining} seconds wait karein naya request bhejne se pehle.`, { parse_mode: 'HTML' });
   }
 
   // Detect Aspect Ratio
@@ -91,6 +99,19 @@ To generate an instant video, provide your prompt:
   const safePreview = escapeHtml(cleanPreview);
   let statusMessage = null;
 
+  // Initialize active render job
+  activeRenderJobs.set(userId.toString(), {
+    userId: userId.toString(),
+    prompt: safePreview,
+    aspectRatio,
+    requestedDuration,
+    jobId: null,
+    stage: '⏳ Initializing GPU slot...',
+    percent: 5,
+    startedAt: Date.now(),
+    lastUpdated: Date.now(),
+  });
+
   try {
     await QueueService.enqueue({
       userId,
@@ -99,9 +120,15 @@ To generate an instant video, provide your prompt:
         try {
           const queueText = `⏳ <b>Server Busy hai (GPU Slots Full)</b>\n\n📋 <b>Queue Position:</b> #${pos}\n⏱️ <b>Est. Wait:</b> ~${estSec}s\n\nJaise hi slot free hoga, video auto-render start ho jayega!`;
           if (!statusMessage) {
-            statusMessage = await ctx.reply(queueText, { parse_mode: 'HTML' });
+            statusMessage = await ctx.reply(queueText, {
+              parse_mode: 'HTML',
+              reply_markup: getRenderKeyboard(userId),
+            });
           } else {
-            await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, queueText, { parse_mode: 'HTML' });
+            await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, queueText, {
+              parse_mode: 'HTML',
+              reply_markup: getRenderKeyboard(userId),
+            });
           }
         } catch (e) {
           // Ignore
@@ -123,9 +150,13 @@ To generate an instant video, provide your prompt:
           if (statusMessage) {
             await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, startText, {
               parse_mode: 'HTML',
+              reply_markup: getRenderKeyboard(userId),
             });
           } else {
-            statusMessage = await ctx.reply(startText, { parse_mode: 'HTML' });
+            statusMessage = await ctx.reply(startText, {
+              parse_mode: 'HTML',
+              reply_markup: getRenderKeyboard(userId),
+            });
           }
         } catch (e) {
           // Ignore
@@ -139,6 +170,14 @@ To generate an instant video, provide your prompt:
           requestedDuration,
           async ({ percent, stage, elapsedSec, jobId }) => {
             const now = Date.now();
+            const job = activeRenderJobs.get(userId.toString());
+            if (job) {
+              job.jobId = jobId || job.jobId;
+              job.stage = stage;
+              job.percent = percent;
+              job.lastUpdated = now;
+            }
+
             if (now - lastEditTime < 4500 && percent < 100) return;
             lastEditTime = now;
 
@@ -156,6 +195,7 @@ To generate an instant video, provide your prompt:
               if (statusMessage) {
                 await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, cardText, {
                   parse_mode: 'HTML',
+                  reply_markup: getRenderKeyboard(userId),
                 });
               }
             } catch (editErr) {
@@ -179,6 +219,7 @@ To generate an instant video, provide your prompt:
         });
 
         if (result.videoUrl) {
+          activeRenderJobs.delete(userId.toString());
           await ctx.replyWithVideo(result.videoUrl, {
             caption: `🎬 Generated with Seedance 2.5\n⏱️ Duration: ${result.duration || requestedDuration}s | 📐 Ratio: ${aspectRatio}\n\n⚡ Powered by earnifyXAutomation`,
           });
@@ -200,6 +241,13 @@ To generate an instant video, provide your prompt:
           );
         } else if (result.jobId) {
           // Video is still rendering on Higgsfield GPU (queue / extended render)
+          const job = activeRenderJobs.get(userId.toString());
+          if (job) {
+            job.jobId = result.jobId;
+            job.stage = '🎬 Neural rendering in GPU background...';
+            job.percent = 30;
+          }
+
           const waitTimeText = requestedDuration > 10 ? '~3-6 min' : '~45-90 sec';
           const waitCard = `<b>⏳ GPU Render in Progress! (Seedance 2.5)</b>\n\n` +
             `📝 <b>Prompt:</b> "${safePreview}"\n` +
@@ -212,10 +260,16 @@ To generate an instant video, provide your prompt:
 
           if (statusMessage) {
             try {
-              await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, waitCard, { parse_mode: 'HTML' });
+              await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, waitCard, {
+                parse_mode: 'HTML',
+                reply_markup: getRenderKeyboard(userId),
+              });
             } catch (e) {}
           } else {
-            statusMessage = await ctx.reply(waitCard, { parse_mode: 'HTML' });
+            statusMessage = await ctx.reply(waitCard, {
+              parse_mode: 'HTML',
+              reply_markup: getRenderKeyboard(userId),
+            });
           }
 
           // Background auto-delivery poller with continuous live progress bar updates
@@ -228,6 +282,13 @@ To generate an instant video, provide your prompt:
                 720,
                 async ({ percent, stage, elapsedSec }) => {
                   const now = Date.now();
+                  const currentJob = activeRenderJobs.get(userId.toString());
+                  if (currentJob) {
+                    currentJob.percent = percent;
+                    currentJob.stage = stage;
+                    currentJob.lastUpdated = now;
+                  }
+
                   if (now - lastBgEdit < 4500 && percent < 100) return;
                   lastBgEdit = now;
 
@@ -245,6 +306,7 @@ To generate an instant video, provide your prompt:
                     if (statusMessage) {
                       await ctx.api.editMessageText(ctx.chat.id, statusMessage.message_id, updateCard, {
                         parse_mode: 'HTML',
+                        reply_markup: getRenderKeyboard(userId),
                       });
                     }
                   } catch (editErr) {
@@ -252,6 +314,8 @@ To generate an instant video, provide your prompt:
                   }
                 }
               );
+
+              activeRenderJobs.delete(userId.toString());
 
               if (bgUrl) {
                 await ctx.api.sendVideo(ctx.chat.id, bgUrl, {
@@ -286,10 +350,12 @@ To generate an instant video, provide your prompt:
                 });
               }
             } catch (bgErr) {
+              activeRenderJobs.delete(userId.toString());
               console.error('Background delivery error for Job', result.jobId, bgErr.message);
             }
           })().catch(() => {});
         } else {
+          activeRenderJobs.delete(userId.toString());
           await ctx.reply(
             `⚠️ Video submission note:\n${escapeHtml((result.text || '').slice(0, 1000))}\n\nKripya thoda wait karein ya naya prompt try karein.`,
             { parse_mode: 'HTML' }
@@ -298,12 +364,62 @@ To generate an instant video, provide your prompt:
       },
     });
   } catch (error) {
+    activeRenderJobs.delete(userId.toString());
     console.error('Error in video generation queue:', error);
     await ctx.reply(
       `❌ Generation Failed:\n${error.message || error}\n\nPlease try again or verify prompt parameters.`
     );
   } finally {
     UserService.stopGenerating(userId);
+  }
+}
+
+/**
+ * Handle user clicking [ 🔄 Refresh Status ] button under video progress
+ */
+export async function handleRefreshRender(ctx) {
+  const data = ctx.callbackQuery?.data || '';
+  const targetUserId = data.replace('refresh_render_', '') || ctx.from?.id?.toString();
+  const job = activeRenderJobs.get(targetUserId);
+
+  if (!job) {
+    try {
+      await ctx.answerCallbackQuery({
+        text: '✅ Video render complete ho chuka hai ya koi active generation nahi hai.',
+        show_alert: false,
+      });
+    } catch (e) {}
+    return;
+  }
+
+  const elapsedSec = Math.floor((Date.now() - job.startedAt) / 1000);
+  const nowTime = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+  try {
+    await ctx.answerCallbackQuery({
+      text: `⚡ ${job.stage} (${job.percent}%) - ${elapsedSec}s`,
+      show_alert: false,
+    });
+  } catch (e) {}
+
+  try {
+    const bar = makeProgressBar(job.percent, 10);
+    const cardText = `<b>🚀 GPU Slot Active! Generating with Seedance 2.5 ⚡</b>\n\n` +
+      `📝 <b>Prompt:</b> "${job.prompt}"\n` +
+      `📐 <b>Ratio:</b> ${job.aspectRatio} | ⏱️ <b>Duration:</b> ${job.requestedDuration}s\n` +
+      `📌 <b>Job ID:</b> <code>${job.jobId ? job.jobId.slice(0, 13) + '...' : 'Allocating...'}</code>\n\n` +
+      `<pre>${bar}</pre>\n` +
+      `🔄 <b>Live Status:</b> ${escapeHtml(job.stage)}\n` +
+      `⏱️ <b>Time Elapsed:</b> ${elapsedSec}s\n` +
+      `🕒 <i>(Refreshed: ${nowTime})</i>\n\n` +
+      `⚡ <i>Powered by earnifyXAutomation</i>`;
+
+    await ctx.editMessageText(cardText, {
+      parse_mode: 'HTML',
+      reply_markup: getRenderKeyboard(targetUserId),
+    });
+  } catch (editErr) {
+    // Ignore message not modified
   }
 }
 

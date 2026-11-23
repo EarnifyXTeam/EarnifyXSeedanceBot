@@ -1,8 +1,8 @@
 import { Bot } from 'grammy';
 import http from 'http';
 import { config } from './config.js';
-import { handleStart } from './handlers/start.js';
-import { handleVideoCommand, handleVideoGenerationAction } from './handlers/video.js';
+import { handleStart, handleReferCommand } from './handlers/start.js';
+import { handleVideoCommand, handleVideoGenerationAction, handleRefreshRender } from './handlers/video.js';
 import { handleImageCommand } from './handlers/image.js';
 import { handleAudioCommand } from './handlers/audio.js';
 import { handleStatusCommand } from './handlers/status.js';
@@ -47,6 +47,7 @@ bot.command('balance', handleStatusCommand);
 bot.command('help', handleHelpCommand);
 bot.command('myvideos', handleMyVideos);
 bot.command('recent', handleRecentAudit);
+bot.command(['refer', 'referral', 'invite'], handleReferCommand);
 bot.command('buy', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
 bot.command('plans', (ctx) => sendPaymentInvoice(ctx, ctx.from?.id));
 bot.command('pay', handleManualPaySubmit);
@@ -113,6 +114,22 @@ bot.callbackQuery('btn_status', async (ctx) => {
   try { await ctx.answerCallbackQuery(); } catch (e) { }
   return handleStatusCommand(ctx);
 });
+
+bot.callbackQuery('btn_refresh_status', async (ctx) => {
+  return handleStatusCommand(ctx);
+});
+
+bot.callbackQuery('btn_refer', async (ctx) => {
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
+  return handleReferCommand(ctx);
+});
+
+bot.callbackQuery('btn_main_menu', async (ctx) => {
+  try { await ctx.answerCallbackQuery(); } catch (e) { }
+  return handleStart(ctx);
+});
+
+bot.callbackQuery(/^refresh_render_/, handleRefreshRender);
 
 bot.callbackQuery('btn_live_proof', async (ctx) => {
   try { await ctx.answerCallbackQuery(); } catch (e) { }

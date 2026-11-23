@@ -39,14 +39,15 @@ const cooldowns = new Map();
 
 export class UserService {
   /**
-   * Register or update a real user
+   * Register or update a real user with optional referral support
    */
-  static registerUser(from) {
+  static registerUser(from, referrerId = null) {
     if (!from || from.is_bot) return null;
 
     const id = from.id.toString();
     const now = new Date().toISOString();
     let isNew = false;
+    let referralReward = null;
 
     if (!users[id]) {
       isNew = true;
@@ -61,7 +62,36 @@ export class UserService {
         credits: 0,
         isVip: false,
         isBanned: false,
+        referredBy: null,
+        referrals: [],
+        referralCount: 0,
       };
+
+      // Handle Referral Tracking
+      const cleanRefId = referrerId ? referrerId.toString() : null;
+      if (cleanRefId && cleanRefId !== id && users[cleanRefId]) {
+        users[id].referredBy = cleanRefId;
+        if (!users[cleanRefId].referrals) {
+          users[cleanRefId].referrals = [];
+        }
+        users[cleanRefId].referrals.push({
+          userId: id,
+          joinedAt: now,
+          name: from.first_name || 'User',
+        });
+        users[cleanRefId].referralCount = users[cleanRefId].referrals.length;
+
+        // Reward policy: 3 referrals = Free Lifetime VIP Unlimited!
+        // 1-2 referrals = +1 Free Video Pass each!
+        if (users[cleanRefId].referralCount >= 3 && !users[cleanRefId].isVip) {
+          users[cleanRefId].isVip = true;
+          referralReward = 'vip';
+        } else {
+          users[cleanRefId].credits = (users[cleanRefId].credits || 0) + 1;
+          referralReward = 'credit';
+        }
+      }
+
       console.log(`👤 New real user registered: ${users[id].firstName} (${users[id].username || id})`);
     } else {
       users[id].lastActive = now;
@@ -69,7 +99,23 @@ export class UserService {
     }
 
     saveUsers();
-    return { ...users[id], isNew };
+    return {
+      ...users[id],
+      isNew,
+      referralReward,
+      referrerId: users[id].referredBy,
+    };
+  }
+
+  static getReferralStats(userId) {
+    const user = users[userId.toString()] || {};
+    const count = user.referralCount || (user.referrals ? user.referrals.length : 0);
+    return {
+      referralCount: count,
+      isVip: !!user.isVip,
+      remainingForVip: Math.max(0, 3 - count),
+      referrals: user.referrals || [],
+    };
   }
 
   static isBanned(userId) {
