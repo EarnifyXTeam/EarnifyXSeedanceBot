@@ -90,7 +90,7 @@ bot.command('addcredits', async (ctx) => {
       `🎁 <b>Bonus Credits Added!</b>\n\nAdmin ne aapke account me <b>${count} Free Video Credits</b> add kar diye hain! 🚀`,
       { parse_mode: 'HTML' }
     );
-  } catch (e) {}
+  } catch (e) { }
   return ctx.reply(`✅ Added <b>${count} credits</b> to user <code>${targetUser.id}</code>`, { parse_mode: 'HTML' });
 });
 
@@ -107,7 +107,7 @@ bot.command('setvip', async (ctx) => {
       `🎉 <b>Badhai Ho! VIP Activated!</b>\n\nAdmin ne aapko <b>Lifetime VIP Unlimited Access</b> grant kar diya hai! 💎✨\nAb aap bina kisi payment ke unlimited videos bana sakte hain! 🚀`,
       { parse_mode: 'HTML' }
     );
-  } catch (e) {}
+  } catch (e) { }
   return ctx.reply(
     `💎 <b>VIP Unlimited Access Activated!</b>\n` +
     `• <b>User ID:</b> <code>${targetUser.id}</code>\n` +
@@ -218,18 +218,33 @@ bot.catch((err) => {
 });
 
 // Initialize & Launch
+async function startBotWithRetry() {
+  try {
+    await bot.start({
+      drop_pending_updates: false, // Process incoming user messages
+      onStart: (botInfo) => {
+        console.log(`🎉 Logged in as ${botInfo.first_name} (@${botInfo.username})`);
+        console.log('⚡ Ready to generate with Seedance 2.5!');
+      },
+    });
+  } catch (err) {
+    if (err.error_code === 409 || err.message?.includes('409') || err.message?.includes('Conflict')) {
+      console.warn('⚠️ 409 Conflict: Another bot instance is running. Retrying in 15s...');
+      await new Promise(r => setTimeout(r, 15000));
+      return startBotWithRetry();
+    }
+    console.error('⚠️ Bot polling error, retrying in 5s:', err.message);
+    await new Promise(r => setTimeout(r, 5000));
+    return startBotWithRetry();
+  }
+}
+
 async function main() {
   console.log('🚀 Initializing EarnifyXSeedanceBot [v1.2 - Instant Startup & Auto-Reconnect]...');
 
-  // Start Telegram bot immediately so users get instant responses
+  // Start Telegram bot immediately with auto-reconnect resilience
   console.log('🤖 Bot is now polling for Telegram messages...');
-  bot.start({
-    drop_pending_updates: false, // Process incoming user messages
-    onStart: (botInfo) => {
-      console.log(`🎉 Logged in as ${botInfo.first_name} (@${botInfo.username})`);
-      console.log('⚡ Ready to generate with Seedance 2.5!');
-    },
-  });
+  startBotWithRetry();
 
   // Pre-connect to Higgsfield MCP server in parallel (non-blocking)
   mcpClient.connect().then(() => {
