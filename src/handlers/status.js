@@ -54,11 +54,11 @@ ${text || 'Plan: Ultra 3K (Active Unlimited Generations)'}
     if (ctx.callbackQuery) {
       try {
         await ctx.answerCallbackQuery('Status updated!');
-      } catch (e) {}
+      } catch (e) { }
       try {
         await ctx.editMessageText(message, { parse_mode: 'HTML', reply_markup: keyboard });
         return;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     await ctx.reply(message, { parse_mode: 'HTML', reply_markup: keyboard });

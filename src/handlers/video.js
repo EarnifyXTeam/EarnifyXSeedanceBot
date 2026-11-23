@@ -264,7 +264,7 @@ To generate an instant video, provide your prompt:
                 parse_mode: 'HTML',
                 reply_markup: getRenderKeyboard(userId),
               });
-            } catch (e) {}
+            } catch (e) { }
           } else {
             statusMessage = await ctx.reply(waitCard, {
               parse_mode: 'HTML',
@@ -353,7 +353,7 @@ To generate an instant video, provide your prompt:
               activeRenderJobs.delete(userId.toString());
               console.error('Background delivery error for Job', result.jobId, bgErr.message);
             }
-          })().catch(() => {});
+          })().catch(() => { });
         } else {
           activeRenderJobs.delete(userId.toString());
           await ctx.reply(
@@ -388,7 +388,7 @@ export async function handleRefreshRender(ctx) {
         text: '✅ Video render complete ho chuka hai ya koi active generation nahi hai.',
         show_alert: false,
       });
-    } catch (e) {}
+    } catch (e) { }
     return;
   }
 
@@ -400,7 +400,7 @@ export async function handleRefreshRender(ctx) {
       text: `⚡ ${job.stage} (${job.percent}%) - ${elapsedSec}s`,
       show_alert: false,
     });
-  } catch (e) {}
+  } catch (e) { }
 
   try {
     const bar = makeProgressBar(job.percent, 10);
