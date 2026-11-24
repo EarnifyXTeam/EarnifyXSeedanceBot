@@ -17,16 +17,59 @@ function ensureMcpAuthTokens() {
     if (fs.existsSync(srcAuthDir)) {
       const files = fs.readdirSync(srcAuthDir);
       for (const file of files) {
+        const srcFile = path.join(srcAuthDir, file);
         const destFile = path.join(authDestDir, file);
+
+        let shouldCopy = false;
         if (!fs.existsSync(destFile)) {
-          fs.copyFileSync(path.join(srcAuthDir, file), destFile);
-          console.log(`🔑 Auto-provisioned MCP token: ${file}`);
+          shouldCopy = true;
+        } else if (file.endsWith('_tokens.json')) {
+          try {
+            const srcToken = JSON.parse(fs.readFileSync(srcFile, 'utf8'));
+            const destToken = JSON.parse(fs.readFileSync(destFile, 'utf8'));
+            // If src token has later expiry or dest token is expired, overwrite
+            if ((srcToken.expires_at || 0) > (destToken.expires_at || 0) || (destToken.expires_at && destToken.expires_at < Date.now())) {
+              shouldCopy = true;
+            }
+          } catch (_) {
+            shouldCopy = true;
+          }
+        } else {
+          shouldCopy = true;
+        }
+
+        if (shouldCopy) {
+          fs.copyFileSync(srcFile, destFile);
+          console.log(`🔑 Synchronized MCP token file: ${file}`);
         }
       }
     }
   } catch (err) {
     console.warn('⚠️ MCP auth auto-provisioning warning:', err.message);
   }
+}
+
+function syncBackMcpTokens() {
+  try {
+    const authDestDir = path.join(os.homedir(), '.mcp-auth', 'mcp-remote-v1');
+    const srcAuthDir = path.resolve('src', 'auth');
+    if (fs.existsSync(authDestDir) && fs.existsSync(srcAuthDir)) {
+      const files = fs.readdirSync(authDestDir);
+      for (const file of files) {
+        const destFile = path.join(authDestDir, file);
+        const srcFile = path.join(srcAuthDir, file);
+        if (file.endsWith('_tokens.json')) {
+          try {
+            const destToken = JSON.parse(fs.readFileSync(destFile, 'utf8'));
+            const srcToken = fs.existsSync(srcFile) ? JSON.parse(fs.readFileSync(srcFile, 'utf8')) : {};
+            if ((destToken.expires_at || 0) > (srcToken.expires_at || 0)) {
+              fs.copyFileSync(destFile, srcFile);
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {}
 }
 
 class HiggsfieldMCPClient {
@@ -85,6 +128,7 @@ class HiggsfieldMCPClient {
 
         await this.client.connect(this.transport);
         this.isConnected = true;
+        syncBackMcpTokens();
         console.log('✅ Connected successfully to Higgsfield MCP!');
         return this.client;
       } catch (error) {
